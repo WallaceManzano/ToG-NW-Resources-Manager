@@ -1,36 +1,43 @@
 # ToG Character Manager
 
-This project adds a Python desktop application for managing characters stored in [characters.json](/C:/ToG/characters.json) plus saved teams/formations stored in [formations.json](/C:/ToG/formations.json).
+This is a for-fun Python desktop project for managing data from `Tower of God: New World`.
 
-## What it does
+Its current goal is to help manage:
 
-- Organizes the app into `Characters` and `Formations` tabs
+- characters
+- formations
+- resources (`TODO`)
+
+## What The App Does
+
+- Organizes the UI into `Characters` and `Formations` tabs
+- Stores character data in [characters.json](/C:/ToG/characters.json)
+- Stores formation data in [formations.json](/C:/ToG/formations.json)
 - Creates, reads, updates, and deletes characters
-- Imports the `Icon` field from an `http` or `https` PNG image URL
-- Saves downloaded PNG icons into `imported_icons/` and stores the relative file path back into the CSV
-- Shows each character in a material-style summary card with its icon when available
-- Shows a blank rectangle placeholder when a character has no icon
-- Uses the `Color` code for borders: `R` red, `G` green, `B` blue, `Y` yellow, `D` dark purple
-- Uses local star image assets from `assets/` to render the `L` and `B` star rating in the summary
-- Uses the local `characters.json` file for character storage and will import legacy `characters.csv` data automatically if needed
-- Supports custom sorting in the summary by `LB`, `Rarity`, or `Color` using the app-specific order rules
-- Creates, updates, and deletes saved formations inside teams
-- Opens formation editing in a dedicated scene after clicking an existing formation or creating a new one
-- Lets each formation choose one of five teams: `Team 1` to `Team 5`
-- Limits each team to 1 to 5 formations
-- Limits each formation to 1 to 5 characters in fixed `Front 1-3` and `Back 1-2` slots
-- Shows roster cards with icon, `L`, `B`, and rarity
-- Lets you drag a character from the roster into a formation slot
-- Opens a popup with the character's full information when you click a roster card
-- Ensures a character can only belong to one team, while still allowing that character in multiple formations from the same team
+- Imports character icons from `http` or `https` PNG URLs
+- Saves downloaded icons into `imported_icons/`
+- Shows character summary cards with icon, rarity, color, stars, and stats
+- Supports sorting characters by `LB`, `Rarity`, or `Color`
+- Creates, updates, and deletes formations
+- Opens formation editing in a dedicated scene
+- Lets each formation manage `Team 1` to `Team 5`
+- Lets you drag characters from the roster into formation slots
+- Shows saved formation previews with team member icons
+- Opens a popup with full character information from the formation roster
 
-## Files
+## Project Structure
 
-- [app.py](/C:/ToG/app.py): Tkinter desktop application with a material-inspired layout
-- `assets/`: local star images used by the summary cards
-- [characters.json](/C:/ToG/characters.json): the fixed JSON file used by the app
-- [characters.csv](/C:/ToG/characters.csv): legacy CSV source kept only for migration/backup
-- [formations.json](/C:/ToG/formations.json): saved team formations
+- [app.py](/C:/ToG/app.py): small launcher
+- [tog_app/app_window.py](/C:/ToG/tog_app/app_window.py): main app window
+- [tog_app/constants.py](/C:/ToG/tog_app/constants.py): shared constants
+- [tog_app/helpers.py](/C:/ToG/tog_app/helpers.py): shared helper functions
+- [tog_app/repositories.py](/C:/ToG/tog_app/repositories.py): JSON persistence
+- [tog_app/panels/characters.py](/C:/ToG/tog_app/panels/characters.py): Characters tab/panel logic
+- [tog_app/panels/formations.py](/C:/ToG/tog_app/panels/formations.py): Formations tab/panel logic
+- [characters.json](/C:/ToG/characters.json): character store
+- [formations.json](/C:/ToG/formations.json): formation store
+- `assets/`: local visual assets
+- `imported_icons/`: downloaded icon files
 
 ## Run
 
@@ -48,29 +55,28 @@ If `py` is not available, use:
 python app.py
 ```
 
-## Optional image preview support
+## Optional Pillow Support
 
-The app works without extra packages. If you want smoother PNG thumbnail scaling and preview rendering, install Pillow:
+The app works without extra packages. If you want smoother PNG scaling and previews, install Pillow:
 
 ```powershell
 py -m pip install Pillow
 ```
 
-## How icon import works
+## How Icon Import Works
 
 1. Paste an image URL into the `Icon` field.
 2. Click `Import PNG URL`.
 3. The app accepts only `image/png` responses and downloads the file into `imported_icons/`.
 4. The `Icon` field is replaced with the saved relative path.
-5. Click `Create` or `Update` to write the row into the JSON store.
+5. Click `Create` or `Update` to save the character.
 
-## How formations work
+## How Formations Work
 
 1. Open the `Formations` tab.
-2. Click `New Formation` or open an existing formation from the saved list.
-3. Choose `Team 1` to `Team 5` and enter a formation name.
-4. Click a roster card to inspect the full character details.
-5. Drag characters from the roster into the `Front` and `Back` slots.
-6. Click `Create` to save a new formation or `Update` to edit the selected one.
+2. Click `New Formation` or open an existing saved formation.
+3. Choose the team you want to edit from `Team 1` to `Team 5`.
+4. Drag characters from the roster into the board slots.
+5. Click `Create` for a new formation or `Update` for an existing one.
 
-The app stores formations in `formations.json` and keeps team rules validated when you save.
+The app validates formation rules when saving and keeps formations in `formations.json`.
