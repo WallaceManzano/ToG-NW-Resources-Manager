@@ -35,7 +35,12 @@ class CharacterRepository:
             raw_rows = []
 
         if isinstance(file_headers, list) and file_headers:
-            self.headers = [str(header) for header in file_headers]
+            self.headers = [
+                "IW Type" if str(header) == "Type" else str(header)
+                for header in file_headers
+            ]
+        else:
+            self.headers = list(DEFAULT_HEADERS)
 
         rows: list[dict[str, str]] = []
         if isinstance(raw_rows, list):
@@ -43,11 +48,16 @@ class CharacterRepository:
                 if not isinstance(row, dict):
                     continue
                 normalized = {
-                    header: str(row.get(header, "") or "").strip()
+                    header: str(
+                        row.get(header, row.get("Type", "") if header == "IW Type" else "")
+                        or ""
+                    ).strip()
                     for header in self.headers
                 }
                 if any(normalized.values()):
                     rows.append(normalized)
+
+        self.headers = list(DEFAULT_HEADERS)
         return rows
 
     def save(self, rows: list[dict[str, str]]) -> None:

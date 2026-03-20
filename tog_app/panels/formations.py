@@ -341,7 +341,7 @@ class FormationsPanelMixin:
                 wraplength=card_wraplength,
             )
             meta_label.grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=(4, 0))
-            info_text = f"R: {row.get('R', '-') or '-'}   Type: {row.get('Type', '-') or '-'}"
+            info_text = f"R: {row.get('R', '-') or '-'}   IW Type: {row.get('IW Type', '-') or '-'}"
             info_label = tk.Label(
                 card,
                 text=info_text,
@@ -451,7 +451,7 @@ class FormationsPanelMixin:
             icon_canvas.image = image  # type: ignore[attr-defined]
 
         tk.Label(shell, text=row.get("Name", "") or "Unnamed Character", bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=1, sticky="w", padx=(0, 18), pady=(18, 4))
-        meta = " | ".join(part for part in [row.get("Rarity", ""), row.get("Color", ""), row.get("Type", "")] if part)
+        meta = " | ".join(part for part in [row.get("Rarity", ""), row.get("Color", ""), row.get("IW Type", "")] if part)
         tk.Label(shell, text=meta or "No metadata", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=1, sticky="nw", padx=(0, 18), pady=(0, 18))
 
         body = tk.Frame(shell, bg=SURFACE, padx=18, pady=0)

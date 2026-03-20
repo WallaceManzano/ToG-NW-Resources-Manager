@@ -426,10 +426,10 @@ class CharactersPanelMixin:
             icon_shell.create_rectangle(*summary_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
         name = row.get("Name", "") or "Unnamed Character"
-        meta = " â€¢ ".join(
-            part for part in [row.get("Rarity", ""), row.get("Type", "")] if part
+        meta = " Ã¢â‚¬Â¢ ".join(
+            part for part in [row.get("Rarity", ""), row.get("IW Type", "")] if part
         )
-        meta_parts = [row.get("Rarity", ""), row.get("Color", ""), row.get("Type", "")]
+        meta_parts = [row.get("Rarity", ""), row.get("Color", ""), row.get("IW Type", "")]
         meta = " | ".join(part for part in meta_parts if part)
         star_count = get_star_count(row.get("B", ""))
         star_image = self.get_level_star_image(row.get("L", ""))

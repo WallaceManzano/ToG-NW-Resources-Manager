@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -28,7 +28,7 @@ DEFAULT_HEADERS = [
     "G2",
     "G3",
     "G4",
-    "Type",
+    "IW Type",
     "IW1",
     "IW2",
     "IW3",
