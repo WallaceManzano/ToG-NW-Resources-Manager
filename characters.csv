@@ -1,29 +1,29 @@
-﻿"Icon","Rarity","Color","Name","L","B","R","EE","Rapport","G1","G2","G3","G4","Type","IW1","IW2","IW3","IW4","IW5"
-"imported_icons/Ex_Urek_Mazino.png","Ex","B","Urek Mazino","RB","5","7","40","7","5","5","0","5","Bari","20","20","20","20","20"
-"imported_icons/SSR_Amizu.png","SSR+","D","Amizu","RB","5","6","40","7","5","5","5","5","Ei","20","20","20","20","20"
-"imported_icons/SSR_Yihwa_Yeon.png","SSR+","G","Yihwa Yeon","RB","5","6","35","6","","","","5","Runda","20","20","20","20","20"
-"imported_icons/SSR_TF_Bam.png","SSR+","B","TF Bam","RB","5","6","35","7","","5","","5","Ei","20","20","20","20","20"
-"imported_icons/XSR_Hugo.webp","XSR+","Y","Hugo","RB","5","6","40","6","5","5","5","5","Raff","20","20","20","20","20"
-"imported_icons/SSR_Khun_Mascheny.png","SSR+","D","Khun Mascheny","RB","5","5","40","7","","","","","Ei","20","20","20","20","20"
-"imported_icons/SSR_Hugo.png","SSR+","Y","Hugo","RB","5","5","35","7","5","5","5","5","Raff","20","20","20","20","20"
-"imported_icons/SSR_Evan.png","SSR+","Y","Evan","RB","5","5","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Yirang_Yeon.png","SSR+","Y","Yirang Yeon","RB","5","5","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Anaak.png","SSR","R","Anaak","RB","5","5","30","7","","","","","Bari","","","","",""
-"imported_icons/SSR_Albelda.png","SSR+","R","Albelda","RB","5","5","30","4","","","","5","Runda","20","20","20","20","20"
-"imported_icons/SSR_Dumas.webp","SSR+","R","Dumas","RB","5","5","40","6","5","5","5","5","Raff","20","20","20","20","20"
-"imported_icons/SSR_Khun_Aguero.png","SSR","D","Khun Aguero","RB","5","5","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Anna.png","SSR","D","Anna","RB","5","5","30","6","","","","5","Bari","","","","20",""
-"imported_icons/SSR_Reflejo.png","SSR","D","Reflejo","RB","5","5","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Ha_Yura.png","SSR","D","Ha Yura","RB","5","5","30","6","","","","5","Bari","","","","20","20"
-"imported_icons/SSR_Bam.png","SSR","Y","Bam","RB","5","5","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Hockney.png","SSR","B","Hockney","RB","5","5","30","6","0","0","0","5","Bari","","","","",""
-"imported_icons/SSR_Ju.webp","SSR","G","Ju","P","3","","0","0","","","","","","","","","",""
-"imported_icons/SSR_Karaka.png","SSR+","D","Karaka","P","1","","20","4","","","","","Myeron","","","","",""
-"imported_icons/Ex_Gustang.png","Ex","R","Gustang","R","3","3","40","7","5","5","5","5","Bari","20","20","20","20","20"
-"imported_icons/SSR_Sharon.png","SSR+","Y","Sharon","R","3","3","30","6","","","","5","Runda","","","","",""
-"imported_icons/Ex_Traumerei.png","Ex","G","Traumerei","R","1","2","35","7","","","","5","Ei","20","20","20","20","20"
-"imported_icons/SSR_Hwaryun.png","SSR","R","Hwaryun","B","3","","30","4","","","","5","Sela","","","","",""
-"imported_icons/SSR_Rashut.png","SSR+","G","Rashut","G","3","","30","6","","","","5","Bari","","","","",""
-"imported_icons/SSR_Dowon.png","SSR+","B","Dowon","G","3","","31","7","","","","","Bari","","","","",""
-"imported_icons/SSR_Robadon.png","SSR+","G","Robadon","-","","","30","4","","","","5","Doris","","","","",""
-"imported_icons/SSR_Cha.png","SSR+","Y","Cha","","0","","30","6","","","","","Bari","","","","",""
+﻿Icon,Rarity,Color,Name,L,B,R,EE,Rapport,G1,G2,G3,G4,Type,IW1,IW2,IW3,IW4,IW5
+imported_icons/Ex_Urek_Mazino.png,Ex,B,Urek Mazino,RB,5,7,40,7,5,5,0,5,Bari,20,20,20,20,20
+imported_icons/SSR_Amizu.png,SSR+,D,Amizu,RB,5,6,40,7,5,5,5,5,Ei,20,20,20,20,20
+imported_icons/SSR_Yihwa_Yeon.png,SSR+,G,Yihwa Yeon,RB,5,6,35,6,,,,5,Runda,20,20,20,20,20
+imported_icons/SSR_TF_Bam.png,SSR+,B,TF Bam,RB,5,6,35,7,,5,,5,Ei,20,20,20,20,20
+imported_icons/XSR_Hugo.webp,XSR+,Y,Hugo,RB,5,6,40,6,5,5,5,5,Raff,20,20,20,20,20
+imported_icons/SSR_Khun_Mascheny.png,SSR+,D,Khun Mascheny,RB,5,5,40,7,,,,,Ei,20,20,20,20,20
+imported_icons/SSR_Hugo.png,SSR+,Y,Hugo,RB,5,5,35,7,5,5,5,5,Raff,20,20,20,20,20
+imported_icons/SSR_Evan.png,SSR+,Y,Evan,RB,5,5,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Yirang_Yeon.png,SSR+,Y,Yirang Yeon,RB,5,5,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Albelda.png,SSR+,R,Albelda,RB,5,5,30,4,,,,5,Runda,20,20,20,20,20
+imported_icons/SSR_Dumas.webp,SSR+,R,Dumas,RB,5,5,40,6,5,5,5,5,Raff,20,20,20,20,20
+imported_icons/SSR_Anaak.png,SSR,R,Anaak,RB,5,5,30,7,,,,,Bari,,,,,
+imported_icons/SSR_Khun_Aguero.png,SSR,D,Khun Aguero,RB,5,5,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Anna.png,SSR,D,Anna,RB,5,5,30,6,,,,5,Bari,,,,20,
+imported_icons/SSR_Reflejo.png,SSR,D,Reflejo,RB,5,5,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Ha_Yura.png,SSR,D,Ha Yura,RB,5,5,30,6,,,,5,Bari,,,,20,20
+imported_icons/SSR_Bam.png,SSR,Y,Bam,RB,5,5,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Hockney.png,SSR,B,Hockney,RB,5,5,30,6,0,0,0,5,Bari,,,,,
+imported_icons/SSR_Ju.webp,SSR,G,Ju,P,3,,0,0,,,,,,,,,,
+imported_icons/SSR_Karaka.png,SSR+,D,Karaka,P,1,,20,4,,,,,Myeron,,,,,
+imported_icons/Ex_Gustang.png,Ex,R,Gustang,R,3,3,40,7,5,5,5,5,Bari,20,20,20,20,20
+imported_icons/SSR_Sharon.png,SSR+,Y,Sharon,R,3,3,30,6,,,,5,Runda,,,,,
+imported_icons/Ex_Traumerei.png,Ex,G,Traumerei,R,1,2,35,7,,,,5,Ei,20,20,20,20,20
+imported_icons/SSR_Hwaryun.png,SSR,R,Hwaryun,B,3,,30,4,,,,5,Sela,,,,,
+imported_icons/SSR_Rashut.png,SSR+,G,Rashut,G,3,,30,6,,,,5,Bari,,,,,
+imported_icons/SSR_Dowon.png,SSR+,B,Dowon,G,3,,31,7,,,,,Bari,,,,,
+imported_icons/SSR_Robadon.png,SSR+,G,Robadon,-,,,30,4,,,,5,Doris,,,,,
+imported_icons/SSR_Cha.png,SSR+,Y,Cha,,0,,30,6,,,,,Bari,,,,,

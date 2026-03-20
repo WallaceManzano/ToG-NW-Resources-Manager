@@ -1,0 +1,42 @@
+[
+  {
+    "formation_name": "5T Exploration Luslec",
+    "teams": {
+      "Team 1": {
+        "front_1": "TF Bam||SSR+||B||imported_icons/SSR_TF_Bam.png",
+        "front_2": "Urek Mazino||Ex||B||imported_icons/Ex_Urek_Mazino.png",
+        "front_3": "Hockney||SSR||B||imported_icons/SSR_Hockney.png",
+        "back_1": "Traumerei||Ex||G||imported_icons/Ex_Traumerei.png",
+        "back_2": "Ha Yura||SSR||D||imported_icons/SSR_Ha_Yura.png"
+      },
+      "Team 2": {
+        "front_1": "Anna||SSR||D||imported_icons/SSR_Anna.png",
+        "front_2": "Anaak||SSR||R||imported_icons/SSR_Anaak.png",
+        "front_3": "Khun||SSR+||D||imported_icons/0625_khunfire_thumb_small_b5187d2215.png",
+        "back_1": "Luslec||Ex||D||imported_icons/0642_luslec_thumb_small_1b7fd0f0a9.png",
+        "back_2": "Albelda||SSR+||R||imported_icons/SSR_Albelda.png"
+      },
+      "Team 3": {
+        "front_1": "Hugo||XSR+||Y||imported_icons/XSR_Hugo.webp",
+        "front_2": "Reflejo||SSR||D||imported_icons/SSR_Reflejo.png",
+        "front_3": "Yirang Yeon||SSR+||Y||imported_icons/SSR_Yirang_Yeon.png",
+        "back_1": "Hwaryun||SSR+||Y||imported_icons/0043_hwaryunplus_thumb_small_6f9a91203d.png",
+        "back_2": "Khun Mascheny||SSR+||D||imported_icons/SSR_Khun_Mascheny.png"
+      },
+      "Team 4": {
+        "front_1": "Yihwa Yeon||SSR+||G||imported_icons/SSR_Yihwa_Yeon.png",
+        "front_2": "Robadon||SSR+||G||imported_icons/SSR_Robadon.png",
+        "front_3": "Ha Yura||SSR+||D||imported_icons/0037_hayurafug_thumb_small_d8355b1a20.png",
+        "back_1": "Rashut||SSR+||G||imported_icons/SSR_Rashut.png",
+        "back_2": "Amizu||SSR+||D||imported_icons/SSR_Amizu.png"
+      },
+      "Team 5": {
+        "front_1": "Xia Xia||SSR+||R||imported_icons/0623_spyxia_thumb_small_8a1d4a6eb2.png",
+        "front_2": "Dumas||SSR+||R||imported_icons/SSR_Dumas.webp",
+        "front_3": "Hugo||SSR+||Y||imported_icons/SSR_Hugo.png",
+        "back_1": "Gustang||Ex||R||imported_icons/Ex_Gustang.png",
+        "back_2": "Sharon||SSR+||Y||imported_icons/SSR_Sharon.png"
+      }
+    }
+  }
+]
