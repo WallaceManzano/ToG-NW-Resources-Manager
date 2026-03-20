@@ -1,3 +1,5 @@
 *.json
 imported_icons/
 __pycache__/
+.vscode/
+tog_app/__pycache__/
