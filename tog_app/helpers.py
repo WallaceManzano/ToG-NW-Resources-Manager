@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 from urllib.parse import urlparse
@@ -20,6 +20,10 @@ def normalize_team_name(value: str) -> str:
 
 
 def normalize_character_name(value: str) -> str:
+    return " ".join((value or "").strip().split()).casefold()
+
+
+def normalize_item_name(value: str) -> str:
     return " ".join((value or "").strip().split()).casefold()
 
 
@@ -80,6 +84,21 @@ def parse_int(value: str) -> int:
         return int((value or "").strip())
     except (TypeError, ValueError, AttributeError):
         return 0
+
+
+def parse_float(value: str) -> float:
+    normalized = str(value or "").strip().replace(",", ".")
+    try:
+        return float(normalized)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def format_decimal(value: float, places: int = 2) -> str:
+    rendered = f"{float(value):.{places}f}".rstrip("0").rstrip(".")
+    if rendered in {"", "-0"}:
+        return "0"
+    return rendered
 
 
 def centered_ratio_box(

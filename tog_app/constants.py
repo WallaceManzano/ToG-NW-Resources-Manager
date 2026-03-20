@@ -6,6 +6,7 @@ APP_TITLE = "ToG Character Manager"
 BASE_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_CHARACTERS_PATH = BASE_DIR / "characters.json"
 DEFAULT_FORMATIONS_PATH = BASE_DIR / "formations.json"
+DEFAULT_PACKS_PATH = BASE_DIR / "packs.json"
 ICON_DIR = BASE_DIR / "imported_icons"
 ASSETS_DIR = BASE_DIR / "assets"
 ICON_RATIO_WIDTH = 200
@@ -77,6 +78,7 @@ COLOR_ORDER = {"D": 0, "Y": 1, "R": 2, "G": 3, "B": 4}
 SORT_OPTIONS = ("Sort by LB", "Sort by Rarity", "Sort by Color")
 FORMATION_SLOT_ORDER = ("front_1", "front_2", "front_3", "back_1", "back_2")
 TEAM_OPTIONS = tuple(f"Team {index}" for index in range(1, 6))
+BRL_TO_USD_RATE = 6.25
 FORMATION_SLOT_LABELS = {
     "front_1": "Front 1",
     "front_2": "Front 2",

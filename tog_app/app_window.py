@@ -12,11 +12,11 @@ except ImportError:
 
 from .constants import *
 from .helpers import *
-from .panels import CharactersPanelMixin, FormationsPanelMixin
-from .repositories import CharacterRepository, FormationRepository
+from .panels import CharactersPanelMixin, FormationsPanelMixin, PacksPanelMixin
+from .repositories import CharacterRepository, FormationRepository, PackRepository
 
 
-class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
+class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanelMixin, tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE)
@@ -28,9 +28,13 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
         self.repository = CharacterRepository(self.characters_path)
         self.formations_path = DEFAULT_FORMATIONS_PATH
         self.formation_repository = FormationRepository(self.formations_path)
+        self.packs_path = DEFAULT_PACKS_PATH
+        self.pack_repository = PackRepository(self.packs_path)
         self.headers = list(DEFAULT_HEADERS)
         self.rows: list[dict[str, str]] = []
         self.formations: list[dict[str, object]] = []
+        self.item_bases: list[dict[str, str]] = []
+        self.packs: list[dict[str, object]] = []
         self.variables = {header: tk.StringVar() for header in self.headers}
         self.status_var = tk.StringVar(value="Loading character data...")
         self.summary_count_var = tk.StringVar(value="0 characters")
@@ -38,13 +42,29 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
         self.sort_mode_var = tk.StringVar(value="Sort by LB")
         self.formation_summary_var = tk.StringVar(value="0 formations across 0 teams")
         self.formation_title_var = tk.StringVar(value="New Formation")
+        self.pack_summary_var = tk.StringVar(value="0 packs with 0 catalog items")
+        self.pack_title_var = tk.StringVar(value="New Pack")
+        self.item_base_title_var = tk.StringVar(value="New Item Base")
+        self.item_base_summary_var = tk.StringVar(value="0 catalog items")
         self.team_name_var = tk.StringVar(value=TEAM_OPTIONS[0])
         self.formation_name_var = tk.StringVar()
+        self.pack_name_var = tk.StringVar()
+        self.pack_price_brl_var = tk.StringVar()
+        self.pack_price_usd_var = tk.StringVar(value="US$ 0")
+        self.pack_total_value_var = tk.StringVar(value="0")
+        self.pack_value_ratio_var = tk.StringVar(value="0")
+        self.item_base_name_var = tk.StringVar()
+        self.item_base_priority_var = tk.StringVar()
+        self.item_base_value_var = tk.StringVar()
+        self.item_base_total_var = tk.StringVar(value="0")
         self.formation_color_filter_var = tk.StringVar(value="All Colors")
         self.formation_rarity_filter_var = tk.StringVar(value="All Rarities")
         self.selected_index: int | None = None
         self.selected_formation_index: int | None = None
+        self.selected_pack_index: int | None = None
+        self.selected_item_base_index: int | None = None
         self.editor_teams: dict[str, dict[str, str]] = empty_team_map()
+        self.pack_editor_items: list[dict[str, str]] = []
         self.active_editor_team = TEAM_OPTIONS[0]
         self.preview_image = None
         self.summary_images: dict[str, tk.PhotoImage] = {}
@@ -66,15 +86,22 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
         self.roster_layout_columns = 0
         self.roster_layout_key: tuple[int, int] = (0, 0)
         self.formation_preview_columns = 0
+        self.pack_catalog_layout_key: tuple[int, int] = (0, 0)
         self.formation_scene_var = tk.StringVar(value="list")
+        self.pack_scene_var = tk.StringVar(value="list")
         self.active_mousewheel_canvas: tk.Canvas | None = None
         self._mousewheel_bound = False
+
+        self.item_base_priority_var.trace_add("write", self._on_item_base_inputs_changed)
+        self.item_base_value_var.trace_add("write", self._on_item_base_inputs_changed)
+        self.pack_price_brl_var.trace_add("write", self._on_pack_price_changed)
 
         self._setup_fonts()
         self._setup_styles()
         self._build_layout()
         self.load_rows(select_index=None)
         self.load_formations(select_index=None)
+        self.load_pack_data(select_index=None)
 
     def _setup_fonts(self) -> None:
         self.title_font = font.Font(family="Segoe UI Semibold", size=22)
@@ -116,13 +143,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
             fg="white",
             font=self.title_font,
         ).pack(anchor="w")
-        # tk.Label(
-        #     title_wrap,
-        #     text="Material-inspired CRUD workspace for your roster.",
-        #     bg=PRIMARY,
-        #     fg="#DCEBFF",
-        #     font=self.subtitle_font,
-        # ).pack(anchor="w", pady=(4, 0))
 
         content = tk.Frame(self, bg=BACKGROUND, padx=24, pady=24)
         content.grid(row=1, column=0, sticky="nsew")
@@ -134,11 +154,14 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
 
         self.characters_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.formations_tab = tk.Frame(self.notebook, bg=BACKGROUND)
+        self.packs_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.notebook.add(self.characters_tab, text="Characters")
         self.notebook.add(self.formations_tab, text="Formations")
+        self.notebook.add(self.packs_tab, text="Packs")
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
         self._build_characters_tab()
         self._build_formations_tab()
+        self._build_packs_tab()
 
         status_wrap = tk.Frame(self, bg=BACKGROUND, padx=24, pady=0)
         status_wrap.grid(row=2, column=0, sticky="ew", pady=(0, 18))
@@ -153,17 +176,23 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
         ).pack(anchor="w")
 
     def on_tab_changed(self, _event: tk.Event | None = None) -> None:
-        if self.notebook.select() != str(self.formations_tab):
-            return
-
-        # Refresh formation canvases after cache-clearing work on the Characters tab.
-        self.after_idle(self.refresh_formation_tab_visuals)
+        selected_tab = self.notebook.select()
+        if selected_tab == str(self.formations_tab):
+            self.after_idle(self.refresh_formation_tab_visuals)
+        elif selected_tab == str(self.packs_tab):
+            self.after_idle(self.refresh_pack_tab_visuals)
 
     def refresh_formation_tab_visuals(self) -> None:
         if self.formation_scene_var.get() == "list":
             self.refresh_formations_list(select_index=self.selected_formation_index)
         else:
             self.render_formation_editor()
+
+    def _on_item_base_inputs_changed(self, *_args: object) -> None:
+        self.update_item_base_preview_value()
+
+    def _on_pack_price_changed(self, *_args: object) -> None:
+        self.update_pack_metrics()
 
     def _make_panel(self, parent: tk.Misc) -> tk.Frame:
         return tk.Frame(
@@ -281,7 +310,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
             font=self.body_font,
         ).grid(row=1, column=0, sticky="ew", pady=(6, 0), ipady=8)
 
-
     def get_summary_image(
         self,
         icon_value: str,
@@ -357,4 +385,3 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, tk.Tk):
         if image is not None:
             self.level_star_images[star_key] = image
         return image
-

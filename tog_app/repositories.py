@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -141,6 +141,108 @@ class FormationRepository:
                         }
                         for team_name in TEAM_OPTIONS
                     },
+                }
+            )
+
+        with self.json_path.open("w", encoding="utf-8") as json_file:
+            json.dump(payload, json_file, indent=2)
+
+
+class PackRepository:
+    def __init__(self, json_path: Path) -> None:
+        self.json_path = json_path
+
+    def ensure_file(self) -> None:
+        if self.json_path.exists():
+            return
+        self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        self.save([], [])
+
+    def load(self) -> tuple[list[dict[str, str]], list[dict[str, object]]]:
+        self.ensure_file()
+        with self.json_path.open("r", encoding="utf-8-sig") as json_file:
+            payload = json.load(json_file)
+
+        if not isinstance(payload, dict):
+            return [], []
+
+        raw_item_bases = payload.get("item_bases", [])
+        raw_packs = payload.get("packs", [])
+
+        item_bases: list[dict[str, str]] = []
+        if isinstance(raw_item_bases, list):
+            for entry in raw_item_bases:
+                if not isinstance(entry, dict):
+                    continue
+                normalized = {
+                    "item_name": str(entry.get("item_name", "") or "").strip(),
+                    "item_priority": str(entry.get("item_priority", "") or "").strip(),
+                    "item_base_value": str(entry.get("item_base_value", "") or "").strip(),
+                    "item_value": str(entry.get("item_value", "") or "").strip(),
+                }
+                if any(normalized.values()):
+                    item_bases.append(normalized)
+
+        packs: list[dict[str, object]] = []
+        if isinstance(raw_packs, list):
+            for entry in raw_packs:
+                if not isinstance(entry, dict):
+                    continue
+                items: list[dict[str, str]] = []
+                raw_items = entry.get("items", [])
+                if isinstance(raw_items, list):
+                    for item in raw_items:
+                        if not isinstance(item, dict):
+                            continue
+                        normalized_item = {
+                            "item_name": str(item.get("item_name", "") or "").strip(),
+                            "amount": str(item.get("amount", "") or "").strip(),
+                        }
+                        if any(normalized_item.values()):
+                            items.append(normalized_item)
+                packs.append(
+                    {
+                        "pack_name": str(entry.get("pack_name", "") or "").strip(),
+                        "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                        "items": items,
+                    }
+                )
+
+        return item_bases, packs
+
+    def save(
+        self,
+        item_bases: list[dict[str, str]],
+        packs: list[dict[str, object]],
+    ) -> None:
+        self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "item_bases": [
+                {
+                    "item_name": str(entry.get("item_name", "") or "").strip(),
+                    "item_priority": str(entry.get("item_priority", "") or "").strip(),
+                    "item_base_value": str(entry.get("item_base_value", "") or "").strip(),
+                    "item_value": str(entry.get("item_value", "") or "").strip(),
+                }
+                for entry in item_bases
+            ],
+            "packs": [],
+        }
+
+        for entry in packs:
+            raw_items = entry.get("items", [])
+            payload["packs"].append(
+                {
+                    "pack_name": str(entry.get("pack_name", "") or "").strip(),
+                    "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                    "items": [
+                        {
+                            "item_name": str(item.get("item_name", "") or "").strip(),
+                            "amount": str(item.get("amount", "") or "").strip(),
+                        }
+                        for item in raw_items
+                        if isinstance(item, dict)
+                    ],
                 }
             )
 
