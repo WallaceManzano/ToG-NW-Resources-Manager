@@ -269,7 +269,13 @@ class CharactersPanelMixin:
         for index, header in enumerate(fields):
             row = 1 + (index // 3)
             column = index % 3
-            self._make_input(self.form_frame, header, self.variables[header], row, column)
+            self._make_input(
+                self.form_frame,
+                display_character_field_label(header),
+                self.variables[header],
+                row,
+                column,
+            )
 
         self.update_icon_preview()
 
@@ -426,18 +432,17 @@ class CharactersPanelMixin:
             icon_shell.create_rectangle(*summary_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
         name = row.get("Name", "") or "Unnamed Character"
-        meta = " Ã¢â‚¬Â¢ ".join(
-            part for part in [row.get("Rarity", ""), row.get("IW Type", "")] if part
-        )
-        meta_parts = [row.get("Rarity", ""), row.get("Color", ""), row.get("IW Type", "")]
-        meta = " | ".join(part for part in meta_parts if part)
+        rarity = row.get("Rarity", "")
+        color_value = row.get("Color", "")
+        iw_type = row.get("IW Type", "")
+        color_icon = self.get_color_icon_image(color_value, 16)
         star_count = get_star_count(row.get("B", ""))
         star_image = self.get_level_star_image(row.get("L", ""))
         star_fallback = "\u2605" * star_count
         stats = "  ".join(
             f"{label}: {value}"
             for label, value in [
-                ("R", row.get("R", "")),
+                (display_character_field_label("R"), row.get("R", "")),
                 ("EE", row.get("EE", "")),
                 ("Rapport", row.get("Rapport", "")),
             ]
@@ -446,15 +451,82 @@ class CharactersPanelMixin:
 
         name_label = tk.Label(card, text=name, bg=bg, fg=TEXT, font=self.card_title_font, anchor="w")
         name_label.grid(row=0, column=1, sticky="ew", padx=(14, 0))
-        meta_label = tk.Label(
-            card,
-            text=meta or "No metadata",
-            bg=bg,
-            fg=TEXT_MUTED,
-            font=self.card_meta_font,
-            anchor="w",
-        )
-        meta_label.grid(row=1, column=1, sticky="ew", padx=(14, 0), pady=(4, 0))
+        meta_row = tk.Frame(card, bg=bg)
+        meta_row.grid(row=1, column=1, sticky="w", padx=(14, 0), pady=(4, 0))
+        meta_widgets: list[tk.Widget] = [meta_row]
+        has_meta = False
+
+        def add_meta_separator() -> tk.Label:
+            separator = tk.Label(
+                meta_row,
+                text=" | ",
+                bg=bg,
+                fg=TEXT_MUTED,
+                font=self.card_meta_font,
+            )
+            separator.pack(side="left")
+            meta_widgets.append(separator)
+            return separator
+
+        def add_meta_text(text: str) -> None:
+            nonlocal has_meta
+            if not text:
+                return
+            if has_meta:
+                add_meta_separator()
+            label = tk.Label(
+                meta_row,
+                text=text,
+                bg=bg,
+                fg=TEXT_MUTED,
+                font=self.card_meta_font,
+                anchor="w",
+            )
+            label.pack(side="left")
+            meta_widgets.append(label)
+            has_meta = True
+
+        def add_meta_color_icon() -> None:
+            nonlocal has_meta
+            if color_icon is None and not color_value:
+                return
+            if has_meta:
+                add_meta_separator()
+            label_kwargs = {
+                "bg": bg,
+                "anchor": "w",
+            }
+            if color_icon is not None:
+                label = tk.Label(meta_row, image=color_icon, **label_kwargs)
+                label.image = color_icon  # type: ignore[attr-defined]
+            else:
+                label = tk.Label(
+                    meta_row,
+                    text=color_value,
+                    fg=TEXT_MUTED,
+                    font=self.card_meta_font,
+                    **label_kwargs,
+                )
+            label.pack(side="left")
+            meta_widgets.append(label)
+            has_meta = True
+
+        add_meta_text(rarity)
+        add_meta_color_icon()
+        add_meta_text(iw_type)
+
+        if not has_meta:
+            meta_label = tk.Label(
+                meta_row,
+                text="No metadata",
+                bg=bg,
+                fg=TEXT_MUTED,
+                font=self.card_meta_font,
+                anchor="w",
+            )
+            meta_label.pack(side="left")
+            meta_widgets.append(meta_label)
+
         star_canvas = tk.Canvas(
             card,
             width=120,
@@ -500,12 +572,12 @@ class CharactersPanelMixin:
             card,
             icon_shell,
             name_label,
-            meta_label,
+            *meta_widgets,
             star_canvas,
             stats_label,
         )
 
-        for widget in (card, icon_shell, name_label, meta_label, star_canvas, stats_label):
+        for widget in (card, icon_shell, name_label, *meta_widgets, star_canvas, stats_label):
             widget.bind("<Button-1>", lambda _event, idx=index: self.select_item(idx))
 
     def get_summary_image(

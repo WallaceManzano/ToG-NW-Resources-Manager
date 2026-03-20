@@ -83,69 +83,27 @@ class PacksPanelMixin:
         self.packs_editor_scene = self._make_panel(self.packs_tab)
         self.packs_editor_scene.grid(row=0, column=0, sticky="nsew")
         self.packs_editor_scene.columnconfigure(0, weight=1)
-        self.packs_editor_scene.rowconfigure(1, weight=1)
+        self.packs_editor_scene.rowconfigure(0, weight=1)
 
-        editor_header = tk.Frame(self.packs_editor_scene, bg=SURFACE)
-        editor_header.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
-        editor_header.columnconfigure(1, weight=1)
+        editor_shell = tk.Frame(self.packs_editor_scene, bg=SURFACE)
+        editor_shell.grid(row=0, column=0, sticky="nsew")
+        editor_shell.columnconfigure(0, weight=1)
+        editor_shell.rowconfigure(0, weight=1)
 
-        self._make_button(
-            editor_header,
-            "Back",
-            self.show_packs_list_scene,
-            filled=False,
-        ).grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 12))
-        tk.Label(
-            editor_header,
-            textvariable=self.pack_title_var,
-            bg=SURFACE,
-            fg=TEXT,
-            font=self.section_font,
-        ).grid(row=0, column=1, sticky="w")
-        tk.Label(
-            editor_header,
-            text="Choose items from the global item base catalog, then compare the total pack value against the BRL price converted using 1 USD = 6.25 BRL.",
-            bg=SURFACE,
-            fg=TEXT_MUTED,
-            font=self.body_font,
-            wraplength=760,
-            justify="left",
-        ).grid(row=1, column=1, sticky="w", pady=(4, 0))
-        self._make_button(
-            editor_header,
-            "Manage Item Base",
-            self.open_item_base_manager,
-            filled=False,
-        ).grid(row=0, column=2, rowspan=2, sticky="e")
+        self.packs_editor_canvas = tk.Canvas(editor_shell, bg=SURFACE, highlightthickness=0, bd=0)
+        self.packs_editor_canvas.grid(row=0, column=0, sticky="nsew")
+        editor_scroll = ttk.Scrollbar(editor_shell, orient="vertical", command=self.packs_editor_canvas.yview)
+        editor_scroll.grid(row=0, column=1, sticky="ns")
+        self.packs_editor_canvas.configure(yscrollcommand=editor_scroll.set)
 
-        self.packs_editor_body = tk.Frame(self.packs_editor_scene, bg=SURFACE)
-        self.packs_editor_body.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 16))
-        self.packs_editor_body.columnconfigure(0, weight=1)
-        self.packs_editor_body.rowconfigure(1, weight=1)
-
-        self.packs_form_frame = tk.Frame(self.packs_editor_body, bg=SURFACE)
-        self.packs_form_frame.grid(row=0, column=0, sticky="ew")
-        self.packs_form_frame.columnconfigure(0, weight=1)
-
-        catalog_wrap = tk.Frame(self.packs_editor_body, bg=SURFACE)
-        catalog_wrap.grid(row=1, column=0, sticky="nsew")
-        catalog_wrap.columnconfigure(0, weight=1)
-        catalog_wrap.rowconfigure(0, weight=1)
-
-        self.packs_catalog_canvas = tk.Canvas(catalog_wrap, bg=SURFACE, highlightthickness=0, bd=0)
-        self.packs_catalog_canvas.grid(row=0, column=0, sticky="nsew")
-        catalog_scroll = ttk.Scrollbar(catalog_wrap, orient="vertical", command=self.packs_catalog_canvas.yview)
-        catalog_scroll.grid(row=0, column=1, sticky="ns")
-        self.packs_catalog_canvas.configure(yscrollcommand=catalog_scroll.set)
-
-        self.packs_catalog_frame = tk.Frame(self.packs_catalog_canvas, bg=SURFACE)
-        self.packs_catalog_window = self.packs_catalog_canvas.create_window((0, 0), window=self.packs_catalog_frame, anchor="nw")
-        self.packs_catalog_frame.bind(
+        self.packs_editor_content = tk.Frame(self.packs_editor_canvas, bg=SURFACE)
+        self.packs_editor_window = self.packs_editor_canvas.create_window((0, 0), window=self.packs_editor_content, anchor="nw")
+        self.packs_editor_content.bind(
             "<Configure>",
-            lambda _event: self.packs_catalog_canvas.configure(scrollregion=self.packs_catalog_canvas.bbox("all")),
+            lambda _event: self.packs_editor_canvas.configure(scrollregion=self.packs_editor_canvas.bbox("all")),
         )
-        self.packs_catalog_canvas.bind("<Configure>", self.on_packs_catalog_canvas_configure)
-        self._bind_mousewheel(self.packs_catalog_canvas, self.packs_catalog_frame)
+        self.packs_editor_canvas.bind("<Configure>", self.on_packs_editor_canvas_configure)
+        self._bind_mousewheel(self.packs_editor_canvas, self.packs_editor_content)
 
         self.show_packs_list_scene()
         self.render_pack_editor()
@@ -156,19 +114,102 @@ class PacksPanelMixin:
         else:
             self.render_pack_editor()
 
+    def _capture_search_state(self) -> dict[str, int | str]:
+        state: dict[str, int | str] = {}
+        focused = self.focus_get()
+        pack_entry = getattr(self, "pack_catalog_search_entry", None)
+        manager_entry = getattr(self, "item_base_manager_search_entry", None)
+        if pack_entry is not None and focused is pack_entry:
+            state["target"] = "pack"
+            state["index"] = pack_entry.index(tk.INSERT)
+        elif manager_entry is not None and focused is manager_entry:
+            state["target"] = "manager"
+            state["index"] = manager_entry.index(tk.INSERT)
+        return state
+
+    def _restore_search_state(self, state: dict[str, int | str]) -> None:
+        target = str(state.get("target", "") or "")
+        if not target:
+            return
+        index = int(state.get("index", 0) or 0)
+
+        def restore() -> None:
+            widget = self.pack_catalog_search_entry if target == "pack" else self.item_base_manager_search_entry
+            if widget is None or not widget.winfo_exists():
+                return
+            widget.focus_set()
+            widget.icursor(index)
+
+        self.after_idle(restore)
+
+    def _capture_canvas_yview(self, canvas: tk.Canvas | None) -> tuple[float, float] | None:
+        if canvas is None or not canvas.winfo_exists():
+            return None
+        return tuple(float(value) for value in canvas.yview())
+
+    def _restore_canvas_yview(self, canvas: tk.Canvas | None, yview: tuple[float, float] | None) -> None:
+        if canvas is None or yview is None:
+            return
+        start = max(0.0, min(1.0, float(yview[0])))
+
+        def restore() -> None:
+            if not canvas.winfo_exists():
+                return
+            canvas.update_idletasks()
+            scrollregion = canvas.bbox("all")
+            if scrollregion is not None:
+                canvas.configure(scrollregion=scrollregion)
+            canvas.yview_moveto(start)
+
+        self.after_idle(restore)
+
+    def _bind_mousewheel_deep(self, canvas: tk.Canvas, root: tk.Widget | None) -> None:
+        if root is None or not root.winfo_exists():
+            return
+        widgets: list[tk.Widget] = []
+
+        def collect(widget: tk.Widget) -> None:
+            widgets.append(widget)
+            for child in widget.winfo_children():
+                collect(child)
+
+        collect(root)
+        self._bind_mousewheel(canvas, *widgets)
+
+    def on_packs_editor_canvas_configure(self, event: tk.Event) -> None:
+        self.packs_editor_canvas.itemconfigure(self.packs_editor_window, width=event.width)
+        new_layout_key = self.get_pack_catalog_layout_key()
+        if new_layout_key != self.pack_catalog_layout_key and self.pack_scene_var.get() == "editor":
+            self.render_pack_editor()
+
     def render_pack_editor(self) -> None:
+        search_state = self._capture_search_state()
+        scroll_state = self._capture_canvas_yview(self.packs_editor_canvas) if str(search_state.get("target", "") or "") == "pack" else None
         self.update_pack_metrics()
-        for child in self.packs_form_frame.winfo_children():
-            child.destroy()
-        for child in self.packs_catalog_frame.winfo_children():
+        for child in self.packs_editor_content.winfo_children():
             child.destroy()
 
-        self.packs_form_frame.configure(padx=10, pady=8)
-        self.packs_form_frame.columnconfigure(0, weight=1)
-        self.packs_catalog_frame.columnconfigure(0, weight=1)
+        self.packs_editor_content.configure(padx=20, pady=20)
+        self.packs_editor_content.columnconfigure(0, weight=1)
+
+        header = tk.Frame(self.packs_editor_content, bg=SURFACE)
+        header.grid(row=0, column=0, sticky="ew")
+        header.columnconfigure(1, weight=1)
+        self._make_button(header, "Back", self.show_packs_list_scene, filled=False).grid(row=0, column=0, rowspan=2, sticky="w", padx=(0, 12))
+        tk.Label(header, textvariable=self.pack_title_var, bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=1, sticky="w")
+        tk.Label(
+            header,
+            text="Choose items from the global item base catalog, search the catalog below, and compare the total pack value against the BRL price converted using 1 USD = 6.25 BRL.",
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.body_font,
+            wraplength=760,
+            justify="left",
+        ).grid(row=1, column=1, sticky="w", pady=(4, 0))
+        self._make_button(header, "Manage Item Base", self.open_item_base_manager, filled=False).grid(row=0, column=2, rowspan=2, sticky="e")
 
         pack_card = tk.Frame(
-            self.packs_form_frame,
+            self.packs_editor_content,
             bg=SURFACE_MUTED,
             highlightthickness=1,
             highlightbackground=BORDER,
@@ -176,17 +217,11 @@ class PacksPanelMixin:
             padx=18,
             pady=18,
         )
-        pack_card.grid(row=0, column=0, sticky="ew", padx=10, pady=(6, 12))
+        pack_card.grid(row=1, column=0, sticky="ew", pady=(16, 12))
         pack_card.columnconfigure(0, weight=1)
         pack_card.columnconfigure(1, weight=1)
 
-        tk.Label(
-            pack_card,
-            text="Pack Details",
-            bg=SURFACE_MUTED,
-            fg=TEXT,
-            font=self.section_font,
-        ).grid(row=0, column=0, columnspan=2, sticky="w")
+        tk.Label(pack_card, text="Pack Details", bg=SURFACE_MUTED, fg=TEXT, font=self.section_font).grid(row=0, column=0, columnspan=2, sticky="w")
         self._make_input(pack_card, "Pack Name", self.pack_name_var, 1, 0)
         self._make_input(pack_card, "Price (BRL)", self.pack_price_brl_var, 1, 1)
         tk.Label(
@@ -215,7 +250,7 @@ class PacksPanelMixin:
             self._make_button(actions, "Delete", self.delete_pack, filled=True, bg=DANGER, active_bg="#B71C1C").pack(side="left", padx=(8, 0))
 
         items_card = tk.Frame(
-            self.packs_form_frame,
+            self.packs_editor_content,
             bg=SURFACE,
             highlightthickness=1,
             highlightbackground=BORDER,
@@ -223,7 +258,7 @@ class PacksPanelMixin:
             padx=18,
             pady=18,
         )
-        items_card.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 12))
+        items_card.grid(row=2, column=0, sticky="ew", pady=(0, 12))
         items_card.columnconfigure(0, weight=1)
         tk.Label(items_card, text="Pack Items", bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=0, sticky="w")
         tk.Label(
@@ -240,13 +275,21 @@ class PacksPanelMixin:
             empty = tk.Frame(items_card, bg=SURFACE_MUTED, padx=14, pady=18, highlightthickness=1, highlightbackground=BORDER, bd=0)
             empty.grid(row=2, column=0, sticky="ew")
             tk.Label(empty, text="No items in this pack yet", bg=SURFACE_MUTED, fg=TEXT, font=self.card_title_font).pack(anchor="w")
-            tk.Label(empty, text="Open the global item base manager to create items, then add them from the catalog here.", bg=SURFACE_MUTED, fg=TEXT_MUTED, font=self.body_font, justify="left", wraplength=860).pack(anchor="w", pady=(4, 0))
+            tk.Label(
+                empty,
+                text="Open the global item base manager to create items, then add them from the catalog here.",
+                bg=SURFACE_MUTED,
+                fg=TEXT_MUTED,
+                font=self.body_font,
+                justify="left",
+                wraplength=860,
+            ).pack(anchor="w", pady=(4, 0))
         else:
             for index, item in enumerate(self.pack_editor_items):
                 self._create_pack_item_row(items_card, index, item, 2 + index)
 
         catalog_card = tk.Frame(
-            self.packs_catalog_frame,
+            self.packs_editor_content,
             bg=SURFACE_MUTED,
             highlightthickness=1,
             highlightbackground=BORDER,
@@ -254,7 +297,7 @@ class PacksPanelMixin:
             padx=18,
             pady=18,
         )
-        catalog_card.grid(row=0, column=0, sticky="nsew", padx=10, pady=(0, 12))
+        catalog_card.grid(row=3, column=0, sticky="ew")
         catalog_card.columnconfigure(0, weight=1)
 
         catalog_header = tk.Frame(catalog_card, bg=SURFACE_MUTED)
@@ -264,20 +307,75 @@ class PacksPanelMixin:
         tk.Label(catalog_header, textvariable=self.item_base_summary_var, bg=SURFACE_MUTED, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self._make_button(catalog_header, "Manage Item Base", self.open_item_base_manager, filled=False).grid(row=0, column=1, rowspan=2, sticky="e")
 
-        if not self.item_bases:
-            empty = tk.Frame(catalog_card, bg=SURFACE, padx=14, pady=18, highlightthickness=1, highlightbackground=BORDER, bd=0)
-            empty.grid(row=1, column=0, sticky="ew", pady=(12, 0))
-            tk.Label(empty, text="No global item base items yet", bg=SURFACE, fg=TEXT, font=self.card_title_font).pack(anchor="w")
-            tk.Label(empty, text="Use Manage Item Base to create the shared catalog before building packs.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font, justify="left", wraplength=860).pack(anchor="w", pady=(4, 0))
-        else:
-            catalog_grid = tk.Frame(catalog_card, bg=SURFACE_MUTED)
-            catalog_grid.grid(row=1, column=0, sticky="ew", pady=(12, 0))
-            column_count, wraplength = self.get_pack_catalog_layout_metrics()
-            self.pack_catalog_layout_key = self.get_pack_catalog_layout_key()
-            for column in range(column_count):
-                catalog_grid.columnconfigure(column, weight=1)
-            for index, item_base in enumerate(self.item_bases):
-                self._create_item_base_card(catalog_grid, index, item_base, wraplength, row=index // column_count, column=index % column_count)
+        search_row = tk.Frame(catalog_card, bg=SURFACE_MUTED)
+        search_row.grid(row=1, column=0, sticky="ew", pady=(14, 0))
+        search_row.columnconfigure(0, weight=1)
+        self.pack_catalog_search_entry = self._make_search_input(search_row, self.item_catalog_search_var)
+        self.pack_catalog_search_entry.grid(row=0, column=0, sticky="ew")
+
+        self.pack_catalog_results = tk.Frame(catalog_card, bg=SURFACE_MUTED)
+        self.pack_catalog_results.grid(row=2, column=0, sticky="ew", pady=(12, 0))
+        self.render_pack_catalog_results()
+
+        self._bind_mousewheel_deep(self.packs_editor_canvas, self.packs_editor_content)
+        self._restore_canvas_yview(self.packs_editor_canvas, scroll_state)
+        self._restore_search_state(search_state)
+
+    def render_pack_catalog_results(self) -> None:
+        results = getattr(self, "pack_catalog_results", None)
+        if results is None or not results.winfo_exists():
+            return
+
+        for child in results.winfo_children():
+            child.destroy()
+
+        filtered_items = self.get_filtered_item_bases()
+        if not filtered_items:
+            empty = tk.Frame(results, bg=SURFACE, padx=14, pady=18, highlightthickness=1, highlightbackground=BORDER, bd=0)
+            empty.grid(row=0, column=0, sticky="ew")
+            if self.item_bases:
+                title = "No matching catalog items"
+                body = "Try a different search term or clear the search field."
+            else:
+                title = "No global item base items yet"
+                body = "Use Manage Item Base to create the shared catalog before building packs."
+            tk.Label(empty, text=title, bg=SURFACE, fg=TEXT, font=self.card_title_font).pack(anchor="w")
+            tk.Label(empty, text=body, bg=SURFACE, fg=TEXT_MUTED, font=self.body_font, justify="left", wraplength=860).pack(anchor="w", pady=(4, 0))
+            self._bind_mousewheel_deep(self.packs_editor_canvas, self.packs_editor_content)
+            return
+
+        catalog_grid = tk.Frame(results, bg=SURFACE_MUTED)
+        catalog_grid.grid(row=0, column=0, sticky="ew")
+        column_count, wraplength = self.get_pack_catalog_layout_metrics()
+        self.pack_catalog_layout_key = self.get_pack_catalog_layout_key()
+        for column in range(column_count):
+            catalog_grid.columnconfigure(column, weight=1)
+        for index, item_base in enumerate(filtered_items):
+            self._create_item_base_card(
+                catalog_grid,
+                item_base,
+                wraplength,
+                row=index // column_count,
+                column=index % column_count,
+            )
+
+        self._bind_mousewheel_deep(self.packs_editor_canvas, self.packs_editor_content)
+
+    def _make_search_input(self, parent: tk.Misc, variable: tk.StringVar) -> tk.Entry:
+        entry = tk.Entry(
+            parent,
+            textvariable=variable,
+            bg=SURFACE,
+            fg=TEXT,
+            relief="flat",
+            bd=0,
+            insertbackground=TEXT,
+            highlightthickness=1,
+            highlightbackground=BORDER,
+            highlightcolor=PRIMARY,
+            font=self.body_font,
+        )
+        return entry
 
     def _create_metric_tile(self, parent: tk.Misc, title: str, variable: tk.StringVar, column: int) -> None:
         tile = tk.Frame(parent, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER, bd=0, padx=12, pady=10)
@@ -323,7 +421,7 @@ class PacksPanelMixin:
         tk.Label(line, text=f"Line Value: {format_decimal(line_total)}", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="e").grid(row=0, column=2, rowspan=2, sticky="e", padx=(0, 8))
         self._make_button(line, "Remove", lambda idx=index: self.remove_pack_item(idx), filled=False).grid(row=0, column=3, rowspan=2, sticky="e")
 
-    def _create_item_base_card(self, parent: tk.Misc, index: int, item_base: dict[str, str], wraplength: int, row: int, column: int) -> None:
+    def _create_item_base_card(self, parent: tk.Misc, item_base: dict[str, str], wraplength: int, row: int, column: int) -> None:
         card = tk.Frame(parent, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER, bd=0, padx=14, pady=12)
         card.grid(row=row, column=column, sticky="ew", padx=6, pady=6)
         card.columnconfigure(0, weight=1)
@@ -335,29 +433,23 @@ class PacksPanelMixin:
         self._make_button(card, "Add to Pack", lambda name=item_base.get("item_name", ""): self.add_item_to_pack(str(name)), filled=True).grid(row=3, column=0, sticky="w", pady=(10, 0))
 
     def get_pack_catalog_layout_metrics(self) -> tuple[int, int]:
-        width = self.packs_catalog_canvas.winfo_width()
+        width = self.packs_editor_canvas.winfo_width()
         if width <= 1:
             width = 720
-        usable_width = max(260, width - 56)
+        usable_width = max(260, width - 88)
         column_count = max(1, min(3, usable_width // 280))
         card_width = max(220, usable_width // column_count)
         wraplength = max(140, card_width - 28)
         return column_count, wraplength
 
     def get_pack_catalog_layout_key(self) -> tuple[int, int]:
-        width = self.packs_catalog_canvas.winfo_width()
+        width = self.packs_editor_canvas.winfo_width()
         if width <= 1:
             width = 720
-        usable_width = max(260, width - 56)
+        usable_width = max(260, width - 88)
         column_count = max(1, min(3, usable_width // 280))
         card_width = max(220, usable_width // column_count)
         return column_count, card_width // 24
-
-    def on_packs_catalog_canvas_configure(self, event: tk.Event) -> None:
-        self.packs_catalog_canvas.itemconfigure(self.packs_catalog_window, width=event.width)
-        new_layout_key = self.get_pack_catalog_layout_key()
-        if new_layout_key != self.pack_catalog_layout_key and self.pack_scene_var.get() == "editor":
-            self.render_pack_editor()
 
     def show_packs_list_scene(self) -> None:
         self.pack_scene_var.set("list")
@@ -373,6 +465,13 @@ class PacksPanelMixin:
         self.clear_pack_form(keep_status=True, reopen=False)
         self.show_pack_editor_scene()
         self.status_var.set("Creating a new pack.")
+
+    def get_filtered_item_bases(self) -> list[dict[str, str]]:
+        query = normalize_item_name(self.item_catalog_search_var.get())
+        if not query:
+            return list(self.item_bases)
+        return [item_base for item_base in self.item_bases if query in normalize_item_name(item_base.get("item_name", ""))]
+
     def load_pack_data(self, select_index: int | None) -> None:
         try:
             self.item_bases, self.packs = self.pack_repository.load()
@@ -399,6 +498,13 @@ class PacksPanelMixin:
         self.pack_summary_var.set(f"{len(self.packs)} pack(s) with {len(self.item_bases)} catalog item(s)")
         self.item_base_summary_var.set(f"{len(self.item_bases)} catalog item(s)")
 
+    def get_pack_sort_key(self, pack: dict[str, object]) -> tuple[float, float, str]:
+        items = self.clone_pack_items(pack.get("items", []))
+        total_value = self.calculate_pack_total_value(items)
+        price_usd = self.calculate_pack_price_usd(str(pack.get("price_brl", "") or "").strip())
+        ratio = total_value / price_usd if price_usd > 0 else 0.0
+        return (-ratio, -total_value, normalize_item_name(str(pack.get("pack_name", "") or "")))
+
     def refresh_packs_list(self, select_index: int | None) -> None:
         for child in self.packs_list_container.winfo_children():
             child.destroy()
@@ -409,6 +515,7 @@ class PacksPanelMixin:
             tk.Label(empty, text="No packs yet", bg=SURFACE, fg=TEXT, font=self.section_font).pack()
             tk.Label(empty, text="Create a pack to calculate total value versus the converted USD price.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(pady=(6, 0))
             self.selected_pack_index = None
+            self._bind_mousewheel_deep(self.packs_list_canvas, self.packs_list_container)
             return
 
         if select_index is not None and 0 <= select_index < len(self.packs):
@@ -416,8 +523,11 @@ class PacksPanelMixin:
         elif self.selected_pack_index is None or not (0 <= self.selected_pack_index < len(self.packs)):
             self.selected_pack_index = None
 
-        for index, pack in enumerate(self.packs):
+        sorted_packs = sorted(enumerate(self.packs), key=lambda entry: self.get_pack_sort_key(entry[1]))
+        for index, pack in sorted_packs:
             self._add_pack_card(index, pack, selected=index == self.selected_pack_index)
+
+        self._bind_mousewheel_deep(self.packs_list_canvas, self.packs_list_container)
 
     def _add_pack_card(self, index: int, pack: dict[str, object], selected: bool) -> None:
         bg = PRIMARY_SOFT if selected else SURFACE
@@ -435,9 +545,9 @@ class PacksPanelMixin:
 
         title = tk.Label(card, text=pack_name, bg=bg, fg=TEXT, font=self.card_title_font, anchor="w")
         title.grid(row=0, column=0, sticky="w")
-        subtitle = tk.Label(card, text=f"{len(items)} line item(s) and {total_units} total unit(s)", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="w")
+        subtitle = tk.Label(card, text=f"{len(items)} line item(s) and {format_decimal(ratio, 0)} total value", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="w")
         subtitle.grid(row=1, column=0, sticky="w", pady=(4, 0))
-        summary = tk.Label(card, text=f"Total Value: {format_decimal(total_value)}   Price: BRL {price_brl or '0'} / US$ {format_decimal(price_usd)}   Value / USD: {format_decimal(ratio, 4)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
+        summary = tk.Label(card, text=f"Total Value: {format_decimal(total_value)}   Price: BRL {price_brl or '0'}   Total Value: {format_decimal(ratio, 0)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
         summary.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         preview_names = [str(item.get("item_name", "") or "").strip() for item in items[:4]]
         preview = tk.Label(card, text=", ".join(name for name in preview_names if name) or "No items", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
@@ -676,11 +786,11 @@ class PacksPanelMixin:
         self.render_pack_editor()
 
     def open_item_base_manager(self) -> None:
-        existing_popup = getattr(self, "item_base_manager_popup", None)
-        if existing_popup is not None and existing_popup.winfo_exists():
-            existing_popup.deiconify()
-            existing_popup.lift()
-            existing_popup.focus_force()
+        popup = getattr(self, "item_base_manager_popup", None)
+        if popup is not None and popup.winfo_exists():
+            popup.deiconify()
+            popup.lift()
+            popup.focus_force()
             self.render_item_base_manager()
             return
 
@@ -703,7 +813,7 @@ class PacksPanelMixin:
         header.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
         header.columnconfigure(0, weight=1)
         tk.Label(header, text="Global Item Base", bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=0, sticky="w")
-        tk.Label(header, text="Changes here affect every pack, and packs can only use items from this catalog.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        tk.Label(header, text="Changes here affect every pack, and the same search field filters this list too.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self._make_button(header, "Close", self.close_item_base_manager, filled=False).grid(row=0, column=1, rowspan=2, sticky="e")
 
         body = tk.Frame(shell, bg=SURFACE)
@@ -744,8 +854,10 @@ class PacksPanelMixin:
         self.item_base_manager_container = None
         self.item_base_manager_window = None
         self.item_base_manager_form = None
+        self.item_base_manager_results = None
 
     def render_item_base_manager(self) -> None:
+        search_state = self._capture_search_state()
         popup = getattr(self, "item_base_manager_popup", None)
         if popup is None or not popup.winfo_exists():
             return
@@ -766,6 +878,7 @@ class PacksPanelMixin:
         tk.Label(summary_card, textvariable=self.item_base_title_var, bg=SURFACE_MUTED, fg=TEXT, font=self.section_font).grid(row=0, column=0, sticky="w")
         tk.Label(summary_card, textvariable=self.item_base_summary_var, bg=SURFACE_MUTED, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=0, sticky="w", pady=(4, 0))
         self._make_input(summary_card, "Item Name", self.item_base_name_var, 2, 0)
+
         fields_row = tk.Frame(summary_card, bg=SURFACE_MUTED)
         fields_row.grid(row=3, column=0, sticky="ew")
         fields_row.columnconfigure(0, weight=1)
@@ -791,23 +904,47 @@ class PacksPanelMixin:
         list_header = tk.Frame(list_container, bg=SURFACE)
         list_header.pack(fill="x", padx=4, pady=(0, 8))
         tk.Label(list_header, text="Catalog Items", bg=SURFACE, fg=TEXT, font=self.section_font).pack(anchor="w")
-        tk.Label(list_header, text="Select an item to edit it. Packs use these values globally.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font, justify="left", wraplength=360).pack(anchor="w", pady=(4, 0))
+        tk.Label(list_header, text="Select an item to edit it. The search field below also filters this list.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font, justify="left", wraplength=360).pack(anchor="w", pady=(4, 0))
+        self.item_base_manager_search_entry = self._make_search_input(list_header, self.item_catalog_search_var)
+        self.item_base_manager_search_entry.pack(fill="x", pady=(10, 0), ipady=8)
 
-        if not self.item_bases:
-            empty = tk.Frame(list_container, bg=SURFACE, pady=48)
-            empty.pack(fill="x")
-            tk.Label(empty, text="No item base items yet", bg=SURFACE, fg=TEXT, font=self.section_font).pack()
-            tk.Label(empty, text="Create the first shared catalog item on the right.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(pady=(6, 0))
+        self.item_base_manager_results = tk.Frame(list_container, bg=SURFACE)
+        self.item_base_manager_results.pack(fill="both", expand=True, pady=(12, 0))
+        self.render_item_base_manager_results()
+
+        self._restore_search_state(search_state)
+
+    def render_item_base_manager_results(self) -> None:
+        results = getattr(self, "item_base_manager_results", None)
+        if results is None or not results.winfo_exists():
             return
 
-        for index, item_base in enumerate(self.item_bases):
+        for child in results.winfo_children():
+            child.destroy()
+
+        filtered_items = self.get_filtered_item_bases()
+        if not filtered_items:
+            empty = tk.Frame(results, bg=SURFACE, pady=48)
+            empty.pack(fill="x")
+            title = "No matching item base items" if self.item_bases else "No item base items yet"
+            body = "Try another search or clear the search field." if self.item_bases else "Create the first shared catalog item on the right."
+            tk.Label(empty, text=title, bg=SURFACE, fg=TEXT, font=self.section_font).pack()
+            tk.Label(empty, text=body, bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(pady=(6, 0))
+            self._bind_mousewheel_deep(self.item_base_manager_canvas, self.item_base_manager_container)
+            return
+
+        for index, item_base in enumerate(filtered_items):
             self._create_item_base_manager_card(index, item_base)
 
+        self._bind_mousewheel_deep(self.item_base_manager_canvas, self.item_base_manager_container)
+
     def _create_item_base_manager_card(self, index: int, item_base: dict[str, str]) -> None:
-        selected = index == self.selected_item_base_index
+        actual_index = self.item_bases.index(item_base)
+        selected = actual_index == self.selected_item_base_index
         bg = PRIMARY_SOFT if selected else SURFACE
         item_value = self.calculate_item_base_value(item_base)
-        card = tk.Frame(self.item_base_manager_container, bg=bg, highlightthickness=1, highlightbackground=PRIMARY if selected else BORDER, bd=0, padx=14, pady=12, cursor="hand2")
+        parent = getattr(self, "item_base_manager_results", self.item_base_manager_container)
+        card = tk.Frame(parent, bg=bg, highlightthickness=1, highlightbackground=PRIMARY if selected else BORDER, bd=0, padx=14, pady=12, cursor="hand2")
         card.pack(fill="x", padx=4, pady=6)
         card.columnconfigure(0, weight=1)
 
@@ -819,8 +956,9 @@ class PacksPanelMixin:
         value_label.grid(row=2, column=0, sticky="w", pady=(8, 0))
 
         for widget in (card, name_label, meta_label, value_label):
-            widget.bind("<Button-1>", lambda _event, idx=index: self.select_item_base(idx))
+            widget.bind("<Button-1>", lambda _event, idx=actual_index: self.select_item_base(idx))
         self._bind_mousewheel(self.item_base_manager_canvas, card, name_label, meta_label, value_label)
+
     def select_item_base(self, index: int) -> None:
         if not (0 <= index < len(self.item_bases)):
             return
@@ -833,15 +971,13 @@ class PacksPanelMixin:
         self.item_base_title_var.set(str(item_base.get("item_name", "") or "Edit Item Base"))
         self.update_item_base_preview_value()
         self.render_item_base_manager()
-        if self.pack_scene_var.get() == "editor":
-            self.render_pack_editor()
         self.status_var.set(f"Editing item base: {item_base.get('item_name', '(no name)')}")
 
     def clear_item_base_form(
         self,
         keep_status: bool = False,
         rerender_popup: bool = True,
-        rerender_pack: bool = True,
+        rerender_pack: bool = False,
     ) -> None:
         self.selected_item_base_index = None
         self.item_base_name_var.set("")
@@ -1043,3 +1179,14 @@ class PacksPanelMixin:
 
 
 
+
+    def _on_item_catalog_search_changed(self, *_args: object) -> None:
+        if self.pack_scene_var.get() == "editor":
+            scroll_state = self._capture_canvas_yview(self.packs_editor_canvas)
+            self.render_pack_catalog_results()
+            self._restore_canvas_yview(self.packs_editor_canvas, scroll_state)
+        popup = getattr(self, "item_base_manager_popup", None)
+        if popup is not None and popup.winfo_exists():
+            scroll_state = self._capture_canvas_yview(getattr(self, "item_base_manager_canvas", None))
+            self.render_item_base_manager_results()
+            self._restore_canvas_yview(self.item_base_manager_canvas, scroll_state)

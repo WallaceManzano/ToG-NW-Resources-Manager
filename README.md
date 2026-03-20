@@ -11,8 +11,8 @@ Its current goal is to help manage:
 ## What The App Does
 
 - Organizes the UI into `Characters` and `Formations` tabs
-- Stores character data in [characters.json](/C:/ToG/characters.json)
-- Stores formation data in [formations.json](/C:/ToG/formations.json)
+- Stores character data in [characters.json](/C:/ToG/db/characters.json)
+- Stores formation data in [formations.json](/C:/ToG/db/formations.json)
 - Creates, reads, updates, and deletes characters
 - Imports character icons from `http` or `https` PNG URLs
 - Saves downloaded icons into `imported_icons/`
@@ -34,8 +34,8 @@ Its current goal is to help manage:
 - [tog_app/repositories.py](/C:/ToG/tog_app/repositories.py): JSON persistence
 - [tog_app/panels/characters.py](/C:/ToG/tog_app/panels/characters.py): Characters tab/panel logic
 - [tog_app/panels/formations.py](/C:/ToG/tog_app/panels/formations.py): Formations tab/panel logic
-- [characters.json](/C:/ToG/characters.json): character store
-- [formations.json](/C:/ToG/formations.json): formation store
+- [characters.json](/C:/ToG/db/characters.json): character store
+- [formations.json](/C:/ToG/db/formations.json): formation store
 - `assets/`: local visual assets
 - `imported_icons/`: downloaded icon files
 
@@ -79,4 +79,4 @@ py -m pip install Pillow
 4. Drag characters from the roster into the board slots.
 5. Click `Create` for a new formation or `Update` for an existing one.
 
-The app validates formation rules when saving and keeps formations in `formations.json`.
+The app validates formation rules when saving and keeps formations in `db/formations.json`.

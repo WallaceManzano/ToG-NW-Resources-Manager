@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-APP_TITLE = "ToG Character Manager"
+APP_TITLE = "ToG Resources Manager"
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEFAULT_CHARACTERS_PATH = BASE_DIR / "characters.json"
-DEFAULT_FORMATIONS_PATH = BASE_DIR / "formations.json"
-DEFAULT_PACKS_PATH = BASE_DIR / "packs.json"
+DB_DIR = BASE_DIR / "db"
+DEFAULT_CHARACTERS_PATH = DB_DIR / "characters.json"
+DEFAULT_FORMATIONS_PATH = DB_DIR / "formations.json"
+DEFAULT_PACKS_PATH = DB_DIR / "packs.json"
 ICON_DIR = BASE_DIR / "imported_icons"
 ASSETS_DIR = BASE_DIR / "assets"
 ICON_RATIO_WIDTH = 200
@@ -71,6 +72,13 @@ STAR_ASSET_PATHS = {
     "R": ASSETS_DIR / "star_R.png",
     "B": ASSETS_DIR / "star_B.png",
     "G": ASSETS_DIR / "star_G.png",
+}
+COLOR_ICON_ASSET_PATHS = {
+    "R": ASSETS_DIR / "color_R.png",
+    "G": ASSETS_DIR / "color_G.png",
+    "B": ASSETS_DIR / "color_B.png",
+    "Y": ASSETS_DIR / "color_Y.png",
+    "D": ASSETS_DIR / "color_D.png",
 }
 L_ORDER = {"RB": 0, "O": 1, "P": 2, "R": 3, "B": 4, "G": 5, "-": 6, "": 6}
 RARITY_ORDER = {"Ex": 0, "SSR+": 1, "XSR+": 2, "SSR": 3}

@@ -451,8 +451,58 @@ class FormationsPanelMixin:
             icon_canvas.image = image  # type: ignore[attr-defined]
 
         tk.Label(shell, text=row.get("Name", "") or "Unnamed Character", bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=1, sticky="w", padx=(0, 18), pady=(18, 4))
-        meta = " | ".join(part for part in [row.get("Rarity", ""), row.get("Color", ""), row.get("IW Type", "")] if part)
-        tk.Label(shell, text=meta or "No metadata", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).grid(row=1, column=1, sticky="nw", padx=(0, 18), pady=(0, 18))
+        meta_row = tk.Frame(shell, bg=SURFACE)
+        meta_row.grid(row=1, column=1, sticky="nw", padx=(0, 18), pady=(0, 18))
+        rarity = row.get("Rarity", "")
+        color_value = row.get("Color", "")
+        iw_type = row.get("IW Type", "")
+        color_icon = self.get_color_icon_image(color_value, 18)
+        has_meta = False
+
+        def add_meta_separator() -> None:
+            tk.Label(
+                meta_row,
+                text=" | ",
+                bg=SURFACE,
+                fg=TEXT_MUTED,
+                font=self.body_font,
+            ).pack(side="left")
+
+        def add_meta_text(text: str) -> None:
+            nonlocal has_meta
+            if not text:
+                return
+            if has_meta:
+                add_meta_separator()
+            tk.Label(
+                meta_row,
+                text=text,
+                bg=SURFACE,
+                fg=TEXT_MUTED,
+                font=self.body_font,
+            ).pack(side="left")
+            has_meta = True
+
+        def add_meta_color_icon() -> None:
+            nonlocal has_meta
+            if color_icon is None and not color_value:
+                return
+            if has_meta:
+                add_meta_separator()
+            if color_icon is not None:
+                label = tk.Label(meta_row, image=color_icon, bg=SURFACE)
+                label.image = color_icon  # type: ignore[attr-defined]
+            else:
+                label = tk.Label(meta_row, text=color_value, bg=SURFACE, fg=TEXT_MUTED, font=self.body_font)
+            label.pack(side="left")
+            has_meta = True
+
+        add_meta_text(rarity)
+        add_meta_color_icon()
+        add_meta_text(iw_type)
+
+        if not has_meta:
+            tk.Label(meta_row, text="No metadata", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(side="left")
 
         body = tk.Frame(shell, bg=SURFACE, padx=18, pady=0)
         body.grid(row=2, column=0, columnspan=2, sticky="nsew")
@@ -462,11 +512,27 @@ class FormationsPanelMixin:
 
         detail_headers = [header for header in self.headers]
         for index, header in enumerate(detail_headers):
-            value = row.get(header, "") or "-"
+            raw_value = row.get(header, "")
+            value = raw_value or "-"
             item = tk.Frame(body, bg=SURFACE_MUTED, padx=12, pady=10, highlightthickness=1, highlightbackground=BORDER)
             item.grid(row=index // 2, column=index % 2, sticky="ew", padx=6, pady=6)
-            tk.Label(item, text=header, bg=SURFACE_MUTED, fg=TEXT_MUTED, font=self.label_font).pack(anchor="w")
-            tk.Label(item, text=value, bg=SURFACE_MUTED, fg=TEXT, font=self.body_font, justify="left", wraplength=180).pack(anchor="w", pady=(6, 0))
+            tk.Label(
+                item,
+                text=display_character_field_label(header),
+                bg=SURFACE_MUTED,
+                fg=TEXT_MUTED,
+                font=self.label_font,
+            ).pack(anchor="w")
+            if header == "Color":
+                color_icon = self.get_color_icon_image(raw_value, 20)
+                if color_icon is not None:
+                    value_label = tk.Label(item, image=color_icon, bg=SURFACE_MUTED)
+                    value_label.image = color_icon  # type: ignore[attr-defined]
+                else:
+                    value_label = tk.Label(item, text=value, bg=SURFACE_MUTED, fg=TEXT, font=self.body_font, justify="left", wraplength=180)
+            else:
+                value_label = tk.Label(item, text=value, bg=SURFACE_MUTED, fg=TEXT, font=self.body_font, justify="left", wraplength=180)
+            value_label.pack(anchor="w", pady=(6, 0))
 
         close_row = tk.Frame(shell, bg=SURFACE, padx=18, pady=18)
         close_row.grid(row=3, column=0, columnspan=2, sticky="e")

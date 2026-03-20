@@ -46,6 +46,10 @@ def character_display_name(row: dict[str, str] | None) -> str:
     return f"{name} ({rarity})" if rarity else name
 
 
+def display_character_field_label(value: str) -> str:
+    return "Revolution" if (value or "").strip() == "R" else value
+
+
 def empty_slot_map() -> dict[str, str]:
     return {slot_key: "" for slot_key in FORMATION_SLOT_ORDER}
 

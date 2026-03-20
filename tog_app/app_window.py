@@ -12,11 +12,11 @@ except ImportError:
 
 from .constants import *
 from .helpers import *
-from .panels import CharactersPanelMixin, FormationsPanelMixin, PacksPanelMixin
+from .panels import CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin
 from .repositories import CharacterRepository, FormationRepository, PackRepository
 
 
-class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanelMixin, tk.Tk):
+class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin, tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE)
@@ -57,18 +57,34 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
         self.item_base_priority_var = tk.StringVar()
         self.item_base_value_var = tk.StringVar()
         self.item_base_total_var = tk.StringVar(value="0")
+        self.item_catalog_search_var = tk.StringVar()
+        self.gacha_mode_var = tk.StringVar(value="Pull Until Maxed")
+        self.gacha_trials_var = tk.StringVar(value="10000")
+        self.gacha_target_copies_var = tk.StringVar(value="22")
+        self.gacha_rate_var = tk.StringVar(value="1")
+        self.gacha_pity_limit_var = tk.StringVar(value="100")
+        self.gacha_available_pulls_var = tk.StringVar(value="0")
+        self.gacha_hard_pity_var = tk.BooleanVar(value=True)
+        self.gacha_mode_note_var = tk.StringVar()
+        self.gacha_overview_var = tk.StringVar(value="Choose settings and run a simulation.")
+        self.gacha_config_var = tk.StringVar(value="No simulation has been run yet.")
+        self.gacha_chart_caption_var = tk.StringVar(value="The histogram will appear here after a simulation finishes.")
         self.formation_color_filter_var = tk.StringVar(value="All Colors")
         self.formation_rarity_filter_var = tk.StringVar(value="All Rarities")
         self.selected_index: int | None = None
         self.selected_formation_index: int | None = None
         self.selected_pack_index: int | None = None
         self.selected_item_base_index: int | None = None
+        self.gacha_results: list[dict[str, int | bool]] = []
+        self.gacha_summary: dict[str, float | int] = {}
+        self.gacha_last_config: dict[str, object] | None = None
         self.editor_teams: dict[str, dict[str, str]] = empty_team_map()
         self.pack_editor_items: list[dict[str, str]] = []
         self.active_editor_team = TEAM_OPTIONS[0]
         self.preview_image = None
         self.summary_images: dict[str, tk.PhotoImage] = {}
         self.level_star_images: dict[str, tk.PhotoImage] = {}
+        self.color_icon_images: dict[str, tk.PhotoImage] = {}
         self.formation_preview_images: list[tk.PhotoImage] = []
         self.formation_slot_vars = {
             slot_key: tk.StringVar()
@@ -95,6 +111,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
         self.item_base_priority_var.trace_add("write", self._on_item_base_inputs_changed)
         self.item_base_value_var.trace_add("write", self._on_item_base_inputs_changed)
         self.pack_price_brl_var.trace_add("write", self._on_pack_price_changed)
+        self.item_catalog_search_var.trace_add("write", self._on_item_catalog_search_changed)
 
         self._setup_fonts()
         self._setup_styles()
@@ -138,7 +155,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
         title_wrap.grid(row=0, column=0, sticky="w")
         tk.Label(
             title_wrap,
-            text="Tower of God Character Manager",
+            text="Tower of God Resources Manager",
             bg=PRIMARY,
             fg="white",
             font=self.title_font,
@@ -155,13 +172,16 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
         self.characters_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.formations_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.packs_tab = tk.Frame(self.notebook, bg=BACKGROUND)
+        self.gacha_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.notebook.add(self.characters_tab, text="Characters")
         self.notebook.add(self.formations_tab, text="Formations")
-        self.notebook.add(self.packs_tab, text="Packs")
+        self.notebook.add(self.packs_tab, text="Packs Value")
+        self.notebook.add(self.gacha_tab, text="Gacha Simulation")
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
         self._build_characters_tab()
         self._build_formations_tab()
         self._build_packs_tab()
+        self._build_gacha_tab()
 
         status_wrap = tk.Frame(self, bg=BACKGROUND, padx=24, pady=0)
         status_wrap.grid(row=2, column=0, sticky="ew", pady=(0, 18))
@@ -181,6 +201,8 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
             self.after_idle(self.refresh_formation_tab_visuals)
         elif selected_tab == str(self.packs_tab):
             self.after_idle(self.refresh_pack_tab_visuals)
+        elif selected_tab == str(self.gacha_tab):
+            self.after_idle(self.refresh_gacha_tab_visuals)
 
     def refresh_formation_tab_visuals(self) -> None:
         if self.formation_scene_var.get() == "list":
@@ -354,6 +376,40 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
             self.summary_images[cache_key] = image
         return image
 
+    def get_color_icon_image(self, value: str, size: int = 16) -> tk.PhotoImage | None:
+        color_key = value.strip().upper()
+        if not color_key:
+            return None
+
+        cache_key = f"{color_key}|{size}"
+        if cache_key in self.color_icon_images:
+            return self.color_icon_images[cache_key]
+
+        asset_path = COLOR_ICON_ASSET_PATHS.get(color_key)
+        if asset_path is None or not asset_path.exists():
+            return None
+
+        image: tk.PhotoImage | None = None
+        if Image is not None and ImageTk is not None:
+            try:
+                pil_image = Image.open(asset_path)
+                pil_image.thumbnail((size, size))
+                image = ImageTk.PhotoImage(pil_image)
+            except Exception:
+                image = None
+
+        if image is None:
+            try:
+                tk_image = tk.PhotoImage(file=str(asset_path))
+                scale = max(1, max(tk_image.width(), tk_image.height()) // size)
+                image = tk_image.subsample(scale, scale) if scale > 1 else tk_image
+            except tk.TclError:
+                image = None
+
+        if image is not None:
+            self.color_icon_images[cache_key] = image
+        return image
+
     def get_level_star_image(self, value: str) -> tk.PhotoImage | None:
         star_key = value.strip().upper()
         if not star_key:
@@ -385,3 +441,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, PacksPanel
         if image is not None:
             self.level_star_images[star_key] = image
         return image
+
+
+

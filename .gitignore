@@ -3,3 +3,5 @@ imported_icons/
 __pycache__/
 .vscode/
 tog_app/__pycache__/
+imports/
+db/
