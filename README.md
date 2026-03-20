@@ -1,6 +1,6 @@
 # ToG Character Manager
 
-This project adds a Python desktop application for managing CSV items with the same structure as [Random Sheet ToG - Characters.csv](/C:/ToG/Random%20Sheet%20ToG%20-%20Characters.csv).
+This project adds a Python desktop application for managing CSV items stored in [characters.csv](/C:/ToG/characters.csv).
 
 ## What it does
 
@@ -13,11 +13,14 @@ This project adds a Python desktop application for managing CSV items with the s
 - Shows each character in a material-style summary card with its icon when available
 - Shows a blank rectangle placeholder when a character has no icon
 - Uses the `Color` code for borders: `R` red, `G` green, `B` blue, `Y` yellow, `D` dark purple
+- Uses local star image assets from `assets/` to render the `L` and `B` star rating in the summary
+- Always uses the local `characters.csv` file and does not allow switching to another CSV in the UI
 
 ## Files
 
 - [app.py](/C:/ToG/app.py): Tkinter desktop application with a material-inspired layout
-- [Random Sheet ToG - Characters.csv](/C:/ToG/Random%20Sheet%20ToG%20-%20Characters.csv): default CSV loaded on startup
+- `assets/`: local star images used by the summary cards
+- [characters.csv](/C:/ToG/characters.csv): the fixed CSV file used by the app
 
 ## Run
 

@@ -5,7 +5,7 @@ import hashlib
 import re
 import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog, font, messagebox, ttk
+from tkinter import font, messagebox, ttk
 from urllib.parse import unquote, urlparse
 from urllib.request import Request, urlopen
 
@@ -18,8 +18,15 @@ except ImportError:
 
 APP_TITLE = "ToG Character Manager"
 BASE_DIR = Path(__file__).resolve().parent
-DEFAULT_CSV_PATH = BASE_DIR / "Random Sheet ToG - Characters.csv"
+DEFAULT_CSV_PATH = BASE_DIR / "characters.csv"
 ICON_DIR = BASE_DIR / "imported_icons"
+ASSETS_DIR = BASE_DIR / "assets"
+ICON_RATIO_WIDTH = 200
+ICON_RATIO_HEIGHT = 262
+SUMMARY_ICON_WIDTH = 84
+SUMMARY_ICON_HEIGHT = 110
+PREVIEW_ICON_WIDTH = 132
+PREVIEW_ICON_HEIGHT = 173
 DEFAULT_HEADERS = [
     "Icon",
     "Rarity",
@@ -69,6 +76,14 @@ LEVEL_STAR_COLOR_MAP = {
     "B": "#0a53a8",
     "G": "#11734b",
 }
+STAR_ASSET_PATHS = {
+    "RB": ASSETS_DIR / "star_RB.png",
+    "O": ASSETS_DIR / "star_O.png",
+    "P": ASSETS_DIR / "star_P.png",
+    "R": ASSETS_DIR / "star_R.png",
+    "B": ASSETS_DIR / "star_B.png",
+    "G": ASSETS_DIR / "star_G.png",
+}
 
 
 def sanitize_filename(value: str) -> str:
@@ -94,6 +109,26 @@ def get_star_count(value: str) -> int:
         return max(0, int(value.strip()))
     except (TypeError, ValueError, AttributeError):
         return 0
+
+
+def centered_ratio_box(
+    container_width: int,
+    container_height: int,
+    padding: int,
+) -> tuple[int, int, int, int]:
+    available_width = max(1, container_width - (padding * 2))
+    available_height = max(1, container_height - (padding * 2))
+
+    if available_width * ICON_RATIO_HEIGHT <= available_height * ICON_RATIO_WIDTH:
+        box_width = available_width
+        box_height = round(box_width * ICON_RATIO_HEIGHT / ICON_RATIO_WIDTH)
+    else:
+        box_height = available_height
+        box_width = round(box_height * ICON_RATIO_WIDTH / ICON_RATIO_HEIGHT)
+
+    x1 = (container_width - box_width) // 2
+    y1 = (container_height - box_height) // 2
+    return x1, y1, x1 + box_width, y1 + box_height
 
 
 class CsvRepository:
@@ -150,12 +185,12 @@ class TogCsvManager(tk.Tk):
         self.rows: list[dict[str, str]] = []
         self.variables = {header: tk.StringVar() for header in self.headers}
         self.status_var = tk.StringVar(value="Loading character data...")
-        self.csv_path_var = tk.StringVar(value=str(self.csv_path))
         self.summary_count_var = tk.StringVar(value="0 characters")
         self.selected_title_var = tk.StringVar(value="New Character")
         self.selected_index: int | None = None
         self.preview_image = None
         self.summary_images: dict[str, tk.PhotoImage] = {}
+        self.level_star_images: dict[str, tk.PhotoImage] = {}
         self.active_mousewheel_canvas: tk.Canvas | None = None
         self._mousewheel_bound = False
 
@@ -211,42 +246,6 @@ class TogCsvManager(tk.Tk):
             fg="#DCEBFF",
             font=self.subtitle_font,
         ).pack(anchor="w", pady=(4, 0))
-
-        actions = tk.Frame(header, bg=PRIMARY)
-        actions.grid(row=0, column=1, sticky="e")
-
-        path_card = tk.Frame(actions, bg="white", padx=14, pady=12, highlightthickness=0)
-        path_card.grid(row=0, column=0, padx=(0, 12))
-        tk.Label(
-            path_card,
-            text="Current CSV",
-            bg="white",
-            fg=TEXT_MUTED,
-            font=self.label_font,
-        ).pack(anchor="w")
-        tk.Label(
-            path_card,
-            textvariable=self.csv_path_var,
-            bg="white",
-            fg=TEXT,
-            font=self.body_font,
-            wraplength=360,
-            justify="left",
-        ).pack(anchor="w", pady=(4, 0))
-
-        button_row = tk.Frame(actions, bg=PRIMARY)
-        button_row.grid(row=0, column=1, sticky="e")
-        self._make_button(button_row, "Open CSV", self.choose_csv, filled=False).grid(
-            row=0,
-            column=0,
-            padx=(0, 10),
-        )
-        self._make_button(
-            button_row,
-            "Reload",
-            lambda: self.load_rows(select_index=self.selected_index),
-            filled=True,
-        ).grid(row=0, column=1)
 
         content = tk.Frame(self, bg=BACKGROUND, padx=24, pady=24)
         content.grid(row=1, column=0, sticky="nsew")
@@ -535,7 +534,8 @@ class TogCsvManager(tk.Tk):
         self.form_frame.configure(padx=10, pady=8)
         for column in range(3):
             self.form_frame.columnconfigure(column, weight=1)
-
+        
+        # 200x262
         icon_card = tk.Frame(
             self.form_frame,
             bg=SURFACE_MUTED,
@@ -550,8 +550,8 @@ class TogCsvManager(tk.Tk):
 
         self.preview_holder = tk.Canvas(
             icon_card,
-            width=132,
-            height=132,
+            width=PREVIEW_ICON_WIDTH,
+            height=PREVIEW_ICON_HEIGHT,
             bg=SURFACE,
             highlightthickness=1,
             highlightbackground=BORDER,
@@ -604,20 +604,6 @@ class TogCsvManager(tk.Tk):
             self._make_input(self.form_frame, header, self.variables[header], row, column)
 
         self.update_icon_preview()
-
-    def choose_csv(self) -> None:
-        selected = filedialog.askopenfilename(
-            title="Open ToG CSV File",
-            initialdir=str(self.csv_path.parent),
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")],
-        )
-        if not selected:
-            return
-
-        self.csv_path = Path(selected)
-        self.csv_path_var.set(str(self.csv_path))
-        self.repository = CsvRepository(self.csv_path)
-        self.load_rows(select_index=None)
 
     def load_rows(self, select_index: int | None) -> None:
         try:
@@ -693,33 +679,33 @@ class TogCsvManager(tk.Tk):
         card.pack(fill="x", padx=4, pady=6)
         card.columnconfigure(1, weight=1)
 
-        icon_shell = tk.Canvas(card, width=72, height=72, bg=bg, highlightthickness=0, bd=0)
-        icon_shell.grid(row=0, column=0, rowspan=4, sticky="nw")
+        icon_shell = tk.Canvas(
+            card,
+            width=SUMMARY_ICON_WIDTH,
+            height=SUMMARY_ICON_HEIGHT,
+            bg=bg,
+            highlightthickness=0,
+            bd=0,
+        )
+        icon_shell.grid(row=0, column=0, rowspan=3, sticky="nw")
 
+        summary_box = centered_ratio_box(SUMMARY_ICON_WIDTH, SUMMARY_ICON_HEIGHT, 4)
         image = self.get_summary_image(row.get("Icon", ""))
         if image is not None:
-            icon_shell.create_rectangle(4, 4, 68, 68, outline=border, fill=SURFACE)
-            icon_shell.create_image(36, 36, image=image)
+            icon_shell.create_rectangle(*summary_box, outline=border, fill=SURFACE)
+            icon_shell.create_image(SUMMARY_ICON_WIDTH // 2, SUMMARY_ICON_HEIGHT // 2, image=image)
         else:
-            icon_shell.create_rectangle(
-                8,
-                8,
-                64,
-                64,
-                outline=border,
-                fill=PLACEHOLDER_FILL,
-                width=1,
-            )
+            icon_shell.create_rectangle(*summary_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
         name = row.get("Name", "") or "Unnamed Character"
         meta = " • ".join(
-            part for part in [row.get("Rarity", ""), row.get("Color", ""), row.get("Type", "")] if part
+            part for part in [row.get("Rarity", ""), row.get("Type", "")] if part
         )
         meta_parts = [row.get("Rarity", ""), row.get("Color", ""), row.get("Type", "")]
         meta = " | ".join(part for part in meta_parts if part)
         star_count = get_star_count(row.get("B", ""))
-        stars = "\u2605" * star_count
-        star_color = get_level_star_color(row.get("L", ""))
+        star_image = self.get_level_star_image(row.get("L", ""))
+        star_fallback = "\u2605" * star_count
         stats = "  ".join(
             f"{label}: {value}"
             for label, value in [
@@ -741,15 +727,36 @@ class TogCsvManager(tk.Tk):
             anchor="w",
         )
         meta_label.grid(row=1, column=1, sticky="ew", padx=(14, 0), pady=(4, 0))
-        star_label = tk.Label(
+        star_canvas = tk.Canvas(
             card,
-            text=stars or "No stars",
+            width=120,
+            height=20,
             bg=bg,
-            fg=star_color if stars else TEXT_MUTED,
-            font=self.star_font if stars else self.card_meta_font,
-            anchor="w",
+            highlightthickness=0,
+            bd=0,
         )
-        star_label.grid(row=2, column=1, sticky="ew", padx=(14, 0), pady=(6, 0))
+        star_canvas.grid(row=2, column=1, sticky="w", padx=(14, 0), pady=(6, 0))
+        if star_count > 0 and star_image is not None:
+            for star_index in range(star_count):
+                star_canvas.create_image(10 + (star_index * 18), 10, image=star_image)
+        elif star_fallback:
+            star_canvas.create_text(
+                0,
+                10,
+                anchor="w",
+                text=star_fallback,
+                fill=get_level_star_color(row.get("L", "")),
+                font=self.star_font,
+            )
+        else:
+            star_canvas.create_text(
+                0,
+                10,
+                anchor="w",
+                text="No stars",
+                fill=TEXT_MUTED,
+                font=self.card_meta_font,
+            )
         stats_label = tk.Label(
             card,
             text=stats or "No summary stats",
@@ -766,11 +773,11 @@ class TogCsvManager(tk.Tk):
             icon_shell,
             name_label,
             meta_label,
-            star_label,
+            star_canvas,
             stats_label,
         )
 
-        for widget in (card, icon_shell, name_label, meta_label, star_label, stats_label):
+        for widget in (card, icon_shell, name_label, meta_label, star_canvas, stats_label):
             widget.bind("<Button-1>", lambda _event, idx=index: self.select_item(idx))
 
     def get_summary_image(self, icon_value: str) -> tk.PhotoImage | None:
@@ -791,7 +798,7 @@ class TogCsvManager(tk.Tk):
         if Image is not None and ImageTk is not None:
             try:
                 pil_image = Image.open(icon_path)
-                pil_image.thumbnail((56, 56))
+                pil_image.thumbnail((SUMMARY_ICON_WIDTH - 8, SUMMARY_ICON_HEIGHT - 8))
                 image = ImageTk.PhotoImage(pil_image)
             except Exception:
                 image = None
@@ -799,13 +806,47 @@ class TogCsvManager(tk.Tk):
         if image is None:
             try:
                 tk_image = tk.PhotoImage(file=str(icon_path))
-                scale = max(1, max(tk_image.width(), tk_image.height()) // 56)
+                width_scale = max(1, tk_image.width() // max(1, SUMMARY_ICON_WIDTH - 8))
+                height_scale = max(1, tk_image.height() // max(1, SUMMARY_ICON_HEIGHT - 8))
+                scale = max(width_scale, height_scale)
                 image = tk_image.subsample(scale, scale) if scale > 1 else tk_image
             except tk.TclError:
                 image = None
 
         if image is not None:
             self.summary_images[cache_key] = image
+        return image
+
+    def get_level_star_image(self, value: str) -> tk.PhotoImage | None:
+        star_key = value.strip().upper()
+        if not star_key:
+            return None
+        if star_key in self.level_star_images:
+            return self.level_star_images[star_key]
+
+        asset_path = STAR_ASSET_PATHS.get(star_key)
+        if asset_path is None or not asset_path.exists():
+            return None
+
+        image: tk.PhotoImage | None = None
+        if Image is not None and ImageTk is not None:
+            try:
+                pil_image = Image.open(asset_path)
+                pil_image.thumbnail((14, 14))
+                image = ImageTk.PhotoImage(pil_image)
+            except Exception:
+                image = None
+
+        if image is None:
+            try:
+                tk_image = tk.PhotoImage(file=str(asset_path))
+                scale = max(1, max(tk_image.width(), tk_image.height()) // 14)
+                image = tk_image.subsample(scale, scale) if scale > 1 else tk_image
+            except tk.TclError:
+                image = None
+
+        if image is not None:
+            self.level_star_images[star_key] = image
         return image
 
     def select_item(self, index: int) -> None:
@@ -958,24 +999,19 @@ class TogCsvManager(tk.Tk):
         border = get_color_border(self.variables["Color"].get())
         self.preview_image = None
         self.preview_holder.configure(highlightbackground=border, highlightcolor=border)
+        preview_box = centered_ratio_box(PREVIEW_ICON_WIDTH, PREVIEW_ICON_HEIGHT, 8)
+        preview_center_x = PREVIEW_ICON_WIDTH // 2
+        preview_center_y = PREVIEW_ICON_HEIGHT // 2
 
-        self.preview_holder.create_rectangle(
-            14,
-            14,
-            118,
-            118,
-            outline=border,
-            fill=PLACEHOLDER_FILL,
-            width=1,
-        )
+        self.preview_holder.create_rectangle(*preview_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
         if not icon_value:
             return
 
         if is_url(icon_value):
             self.preview_holder.create_text(
-                66,
-                66,
+                preview_center_x,
+                preview_center_y,
                 text="PNG URL",
                 fill=TEXT_MUTED,
                 font=self.body_font,
@@ -987,8 +1023,8 @@ class TogCsvManager(tk.Tk):
             icon_path = BASE_DIR / icon_path
         if not icon_path.exists():
             self.preview_holder.create_text(
-                66,
-                66,
+                preview_center_x,
+                preview_center_y,
                 text="Missing\nfile",
                 fill=TEXT_MUTED,
                 font=self.body_font,
@@ -999,22 +1035,24 @@ class TogCsvManager(tk.Tk):
         if Image is not None and ImageTk is not None:
             try:
                 image = Image.open(icon_path)
-                image.thumbnail((96, 96))
+                image.thumbnail((PREVIEW_ICON_WIDTH - 16, PREVIEW_ICON_HEIGHT - 16))
                 self.preview_image = ImageTk.PhotoImage(image)
-                self.preview_holder.create_image(66, 66, image=self.preview_image)
+                self.preview_holder.create_image(preview_center_x, preview_center_y, image=self.preview_image)
                 return
             except Exception:
                 pass
 
         try:
             tk_image = tk.PhotoImage(file=str(icon_path))
-            scale = max(1, max(tk_image.width(), tk_image.height()) // 96)
+            width_scale = max(1, tk_image.width() // max(1, PREVIEW_ICON_WIDTH - 16))
+            height_scale = max(1, tk_image.height() // max(1, PREVIEW_ICON_HEIGHT - 16))
+            scale = max(width_scale, height_scale)
             self.preview_image = tk_image.subsample(scale, scale) if scale > 1 else tk_image
-            self.preview_holder.create_image(66, 66, image=self.preview_image)
+            self.preview_holder.create_image(preview_center_x, preview_center_y, image=self.preview_image)
         except tk.TclError:
             self.preview_holder.create_text(
-                66,
-                66,
+                preview_center_x,
+                preview_center_y,
                 text="Preview\nunavailable",
                 fill=TEXT_MUTED,
                 font=self.body_font,
