@@ -797,6 +797,7 @@ class FormationsPanelMixin:
         active_teams = []
         total_characters = 0
         team_assignments: dict[str, list[str]] = {}
+        team_notes: dict[str, str] = {}
         for team_name in TEAM_OPTIONS:
             team_entry = normalize_team_entry(teams.get(team_name, {}))
             assigned = [
@@ -808,6 +809,7 @@ class FormationsPanelMixin:
                 active_teams.append(team_name)
                 total_characters += len(assigned)
                 team_assignments[team_name] = assigned
+                team_notes[team_name] = str(team_entry.get("Note", "") or "").strip()
 
         team_label = tk.Label(
             card,
@@ -820,22 +822,11 @@ class FormationsPanelMixin:
         team_label.grid(row=0, column=0, sticky="w")
         formation_label = tk.Label(card, text=formation_name, bg=bg, fg=TEXT, font=self.card_title_font, anchor="w")
         formation_label.grid(row=1, column=0, sticky="w", pady=(4, 0))
-        assigned_label = tk.Label(
-            card,
-            text=f"{total_characters} character(s) across {len(active_teams)} team(s)" if active_teams else "No characters assigned",
-            bg=bg,
-            fg=TEXT_MUTED,
-            font=self.card_meta_font,
-            anchor="w",
-            justify="left",
-            wraplength=320,
-        )
-        assigned_label.grid(row=2, column=0, sticky="ew", pady=(6, 0))
 
         preview_widgets: list[tk.Widget] = []
         if team_assignments:
             previews = tk.Frame(card, bg=bg)
-            previews.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+            previews.grid(row=2, column=0, sticky="ew", pady=(10, 0))
             preview_widgets.append(previews)
             preview_columns = self.get_formation_preview_columns()
             for preview_column in range(preview_columns):
@@ -854,10 +845,11 @@ class FormationsPanelMixin:
                     padx=6,
                     pady=6,
                 )
+                team_tile.columnconfigure(1, weight=1)
                 team_tile.grid(
                     row=preview_row,
                     column=preview_column,
-                    sticky="w",
+                    sticky="nw",
                     padx=(0, 6) if preview_column < preview_columns - 1 else (0, 0),
                     pady=(0, 6),
                 )
@@ -909,6 +901,21 @@ class FormationsPanelMixin:
                     else:
                         member_icon.create_text(12, 16, text="+", fill=TEXT_MUTED, font=self.card_meta_font)
 
+                note_text = team_notes.get(team_name, "")
+                if note_text:
+                    note_label = tk.Label(
+                        team_tile,
+                        text=note_text,
+                        bg=team_tile.cget("bg"),
+                        fg=TEXT_MUTED,
+                        font=self.card_meta_font,
+                        justify="left",
+                        anchor="w",
+                        wraplength=220,
+                    )
+                    note_label.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+                    preview_widgets.append(note_label)
+
         actions = tk.Frame(card, bg=bg)
         actions.grid(row=4, column=0, sticky="ew", pady=(10, 0))
         edit_button = self._make_button(actions, "Open", lambda idx=index: self.select_formation(idx), filled=False)
@@ -928,13 +935,12 @@ class FormationsPanelMixin:
             card,
             team_label,
             formation_label,
-            assigned_label,
             *preview_widgets,
             actions,
             edit_button,
             delete_button,
         )
-        for widget in (card, team_label, formation_label, assigned_label, *preview_widgets):
+        for widget in (card, team_label, formation_label, *preview_widgets):
             widget.bind("<Button-1>", lambda _event, idx=index: self.select_formation(idx))
 
     def select_formation(self, index: int) -> None:
