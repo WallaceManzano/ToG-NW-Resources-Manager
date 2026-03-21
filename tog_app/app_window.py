@@ -70,6 +70,10 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.gacha_overview_var = tk.StringVar(value="Choose settings and run a simulation.")
         self.gacha_config_var = tk.StringVar(value="No simulation has been run yet.")
         self.gacha_chart_caption_var = tk.StringVar(value="The histogram will appear here after a simulation finishes.")
+        self.character_summary_rarity_filter_var = tk.StringVar(value=CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS[0])
+        self.character_summary_color_filter_var = tk.StringVar(value=CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS[0])
+        self.character_summary_l_filter_var = tk.StringVar(value=CHARACTER_SUMMARY_L_FILTER_OPTIONS[0])
+        self.character_summary_r_filter_var = tk.StringVar(value=CHARACTER_SUMMARY_R_FILTER_OPTIONS[0])
         self.formation_color_filter_var = tk.StringVar(value="All Colors")
         self.formation_rarity_filter_var = tk.StringVar(value="All Rarities")
         self.selected_index: int | None = None

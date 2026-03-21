@@ -83,9 +83,13 @@ COLOR_ICON_ASSET_PATHS = {
     "Y": ASSETS_DIR / "color_Y.png",
     "D": ASSETS_DIR / "color_D.png",
 }
-CHARACTER_RARITY_OPTIONS = ("EX", "SSR+", "XSR+", "SSR" )
-CHARACTER_COLOR_OPTIONS = ("R", "G", "B", "D", "Y")
+CHARACTER_RARITY_OPTIONS = ("EX", "SSR+", "XSR+", "SSR")
+CHARACTER_COLOR_OPTIONS = ("R", "G", "B", "Y", "D")
 CHARACTER_L_OPTIONS = ("RB", "O", "P", "R", "B", "G", "")
+CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS = ("All Rarities", *CHARACTER_RARITY_OPTIONS)
+CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS = ("All Colors", *CHARACTER_COLOR_OPTIONS)
+CHARACTER_SUMMARY_L_FILTER_OPTIONS = ("All L Values", "RB", "O", "P", "R", "B", "G")
+CHARACTER_SUMMARY_R_FILTER_OPTIONS = ("All R Values", "Blank / 0", "1", "2", "3", "4", "5", "6", "7", "8")
 CHARACTER_IW_TYPE_OPTIONS = (
     "Bari",
     "Runda",

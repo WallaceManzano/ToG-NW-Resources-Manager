@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import tkinter as tk
@@ -65,6 +65,48 @@ class CharactersPanelMixin:
         )
         sort_picker.grid(row=0, column=1, rowspan=2, sticky="e")
         sort_picker.bind("<<ComboboxSelected>>", self.on_sort_changed)
+
+        summary_filters = tk.Frame(summary_header, bg=SURFACE)
+        summary_filters.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(12, 0))
+        for column in range(4):
+            summary_filters.columnconfigure(column, weight=1)
+
+        self._make_combobox(
+            summary_filters,
+            "Rarity",
+            self.character_summary_rarity_filter_var,
+            CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS,
+            0,
+            0,
+            on_select=self.on_character_summary_filter_changed,
+        )
+        self._make_combobox(
+            summary_filters,
+            "Color",
+            self.character_summary_color_filter_var,
+            CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS,
+            0,
+            1,
+            on_select=self.on_character_summary_filter_changed,
+        )
+        self._make_combobox(
+            summary_filters,
+            "L",
+            self.character_summary_l_filter_var,
+            CHARACTER_SUMMARY_L_FILTER_OPTIONS,
+            0,
+            2,
+            on_select=self.on_character_summary_filter_changed,
+        )
+        self._make_combobox(
+            summary_filters,
+            "R",
+            self.character_summary_r_filter_var,
+            CHARACTER_SUMMARY_R_FILTER_OPTIONS,
+            0,
+            3,
+            on_select=self.on_character_summary_filter_changed,
+        )
 
         summary_list_wrap = tk.Frame(self.summary_panel, bg=SURFACE)
         summary_list_wrap.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 16))
@@ -397,7 +439,7 @@ class CharactersPanelMixin:
         else:
             self.select_item(min(select_index, len(self.rows) - 1))
 
-        self.summary_count_var.set(f"{len(self.rows)} character(s)")
+        self.update_summary_count()
         self.status_var.set(f"Loaded {len(self.rows)} character(s) from {self.characters_path.name}.")
 
     def row_sort_key_lb(self, row: dict[str, str]) -> tuple[int, int, int, int]:
@@ -451,9 +493,59 @@ class CharactersPanelMixin:
         self.apply_current_sort(save=True)
         self.summary_images.clear()
         self.refresh_summary(select_index=self.selected_index)
+        self.update_summary_count()
         if self.selected_index is not None:
             self.select_item(self.selected_index)
         self.status_var.set(f"Applied {self.sort_mode_var.get().lower()}.")
+
+    def get_character_summary_r_filter_value(self, value: str) -> str:
+        cleaned = (value or "").strip()
+        if cleaned in {"", "0"}:
+            return CHARACTER_SUMMARY_R_FILTER_OPTIONS[1]
+        try:
+            return str(int(cleaned))
+        except (TypeError, ValueError):
+            return cleaned
+
+    def matches_character_summary_filters(self, row: dict[str, str]) -> bool:
+        selected_rarity = self.character_summary_rarity_filter_var.get().strip()
+        selected_color = self.character_summary_color_filter_var.get().strip()
+        selected_l = self.character_summary_l_filter_var.get().strip()
+        selected_r = self.character_summary_r_filter_var.get().strip()
+        row_rarity = (row.get("Rarity", "") or "").strip().upper()
+        row_color = (row.get("Color", "") or "").strip().upper()
+        row_l = (row.get("L", "") or "").strip().upper()
+        row_r = self.get_character_summary_r_filter_value(row.get("R", ""))
+
+        if selected_rarity and selected_rarity != CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS[0] and row_rarity != selected_rarity:
+            return False
+        if selected_color and selected_color != CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS[0] and row_color != selected_color:
+            return False
+        if selected_l and selected_l != CHARACTER_SUMMARY_L_FILTER_OPTIONS[0] and row_l != selected_l:
+            return False
+        if selected_r and selected_r != CHARACTER_SUMMARY_R_FILTER_OPTIONS[0] and row_r != selected_r:
+            return False
+        return True
+
+    def get_filtered_summary_rows(self) -> list[tuple[int, dict[str, str]]]:
+        return [
+            (index, row)
+            for index, row in enumerate(self.rows)
+            if self.matches_character_summary_filters(row)
+        ]
+
+    def update_summary_count(self) -> None:
+        total_count = len(self.rows)
+        filtered_count = len(self.get_filtered_summary_rows())
+        if filtered_count == total_count:
+            self.summary_count_var.set(f"{total_count} character(s)")
+            return
+        self.summary_count_var.set(f"{filtered_count} of {total_count} character(s)")
+
+    def on_character_summary_filter_changed(self) -> None:
+        self.refresh_summary(select_index=self.selected_index)
+        self.update_summary_count()
+        self.status_var.set("Updated character summary filters.")
 
     def refresh_summary(self, select_index: int | None) -> None:
         for child in self.summary_container.winfo_children():
@@ -481,12 +573,31 @@ class CharactersPanelMixin:
 
         if select_index is not None and 0 <= select_index < len(self.rows):
             self.selected_index = select_index
-        else:
+        elif self.selected_index is not None and not (0 <= self.selected_index < len(self.rows)):
             self.selected_index = None
 
-        for index, row in enumerate(self.rows):
-            self._add_summary_card(index, row, selected=index == self.selected_index)
+        filtered_rows = self.get_filtered_summary_rows()
+        if not filtered_rows:
+            empty = tk.Frame(self.summary_container, bg=SURFACE, pady=48)
+            empty.pack(fill="x")
+            tk.Label(
+                empty,
+                text="No matching characters",
+                bg=SURFACE,
+                fg=TEXT,
+                font=self.section_font,
+            ).pack()
+            tk.Label(
+                empty,
+                text="Try a different filter combination.",
+                bg=SURFACE,
+                fg=TEXT_MUTED,
+                font=self.body_font,
+            ).pack(pady=(6, 0))
+            return
 
+        for index, row in filtered_rows:
+            self._add_summary_card(index, row, selected=index == self.selected_index)
     def _add_summary_card(self, index: int, row: dict[str, str], selected: bool) -> None:
         bg = PRIMARY_SOFT if selected else SURFACE
         border = get_color_border(row.get("Color", ""))
@@ -766,6 +877,7 @@ class CharactersPanelMixin:
         self.selected_title_var.set(row.get("Name", "") or "Unnamed Character")
         self.summary_images.clear()
         self.refresh_summary(select_index=index)
+        self.update_summary_count()
         self.update_icon_preview()
         self.render_character_action_bar()
         self.status_var.set(f"Selected character #{index + 1}: {row.get('Name', '(no name)')}")
@@ -779,6 +891,7 @@ class CharactersPanelMixin:
         self.selected_title_var.set("New Character")
         self.summary_images.clear()
         self.refresh_summary(select_index=None)
+        self.update_summary_count()
         self.update_icon_preview()
         self.render_character_action_bar()
         if not keep_status:
@@ -806,7 +919,7 @@ class CharactersPanelMixin:
             return
 
         new_index = self.rows.index(row) if row in self.rows else len(self.rows) - 1
-        self.summary_count_var.set(f"{len(self.rows)} character(s)")
+        self.update_summary_count()
         self.select_item(new_index)
         self.render_formation_editor()
         self.status_var.set(f"Created character: {row.get('Name', '(no name)')}")
@@ -869,7 +982,7 @@ class CharactersPanelMixin:
             self.status_var.set("Unable to delete character.")
             return
 
-        self.summary_count_var.set(f"{len(self.rows)} character(s)")
+        self.update_summary_count()
         if self.rows:
             self.select_item(min(index, len(self.rows) - 1))
         else:
