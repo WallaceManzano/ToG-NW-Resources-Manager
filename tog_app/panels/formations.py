@@ -362,7 +362,7 @@ class FormationsPanelMixin:
                 wraplength=card_wraplength,
             )
             name_label.grid(row=0, column=1, sticky="ew", padx=(12, 0))
-            meta_text = f"L: {row.get('L', '-') or '-'}   B: {row.get('B', '-') or '-'}   Rarity: {row.get('Rarity', '-') or '-'}"
+            meta_text = f"L: {row.get('L', '-') or '-'}   B: {row.get('B', '-') or '-'}   Rarity: {row.get('Rarity', '-') or '-'} R: {row.get('R', '-') or '-'}"
             meta_label = tk.Label(
                 card,
                 text=meta_text,
@@ -380,9 +380,16 @@ class FormationsPanelMixin:
             iw_status_class = row.get("IW Status Class", "")
             iw_status_s4 = row.get("IW Status S4", "")
             iw_status_s5 = row.get("IW Status S5", "")
-            iw_text = "" if iw_status_class == "" else f'{iw_status_class} {iw_status_s4}/{iw_status_s5}'
+            
+            iw_1 = row.get("IW1", "0")
+            iw_2 = row.get("IW2", "0")
+            iw_3 = row.get("IW3", "0")
+            iw_4 = row.get("IW4", "0")
+            iw_5 = row.get("IW5", "0")
 
-            info_text = f"R: {row.get('R', '-') or '-'}   IW: {iw_type} {iw_text}"
+            iw_text = "" if iw_status_class == "" else f'{iw_status_class} {iw_status_s4}/{iw_status_s5}   {iw_1} {iw_2} {iw_3} {iw_4} {iw_5}'
+
+            info_text = f" IW: {iw_type} {iw_text}"
             info_label = tk.Label(
                 card,
                 text=info_text,
@@ -394,6 +401,7 @@ class FormationsPanelMixin:
                 wraplength=card_wraplength,
             )
             info_label.grid(row=2, column=1, sticky="ew", padx=(12, 0), pady=(4, 0))
+
 
             icon_canvas.configure(cursor="hand2")
             icon_canvas.bind("<ButtonPress-1>", lambda event, char_key=character_key: self.start_drag_character(event, char_key))
