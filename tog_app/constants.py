@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -40,6 +40,37 @@ DEFAULT_HEADERS = [
     "IW Status S4",
     "IW Status S5",
 ]
+
+CHARACTER_FIELD_LABEL_MAP = {
+    "R": "Revolution",
+    "G1": "Gear Slot 1",
+    "G2": "Gear Slot 2",
+    "G3": "Gear Slot 3",
+    "G4": "Gear Slot 4",
+    "IW1": "IW Slot 1",
+    "IW2": "IW Slot 2",
+    "IW3": "IW Slot 3",
+    "IW4": "IW Slot 4",
+    "IW5": "IW Slot 5",
+    "IW Status S4": "IW Status Slot 4",
+    "IW Status S5": "IW Status Slot 5",
+}
+
+COLOR_DISPLAY_MAP = {
+    "R": "Red",
+    "G": "Green",
+    "B": "Blue",
+    "Y": "Yellow",
+    "D": "Dark",
+}
+
+L_DISPLAY_MAP = {
+    "RB": "Rainbow",
+    "O": "Orange",
+    "R": "Red",
+    "B": "Blue",
+    "G": "Green",
+}
 
 PRIMARY = "#1565C0"
 PRIMARY_DARK = "#0D47A1"
@@ -84,12 +115,16 @@ COLOR_ICON_ASSET_PATHS = {
     "D": ASSETS_DIR / "color_D.png",
 }
 CHARACTER_RARITY_OPTIONS = ("EX", "SSR+", "XSR+", "SSR")
-CHARACTER_COLOR_OPTIONS = ("R", "G", "B", "Y", "D")
-CHARACTER_L_OPTIONS = ("RB", "O", "P", "R", "B", "G", "")
+CHARACTER_COLOR_OPTIONS = tuple(COLOR_DISPLAY_MAP[code] for code in ("R", "G", "B", "Y", "D"))
+CHARACTER_L_OPTIONS = tuple(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "P", "R", "B", "G")) + ("",)
 CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS = ("All Rarities", *CHARACTER_RARITY_OPTIONS)
 CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS = ("All Colors", *CHARACTER_COLOR_OPTIONS)
-CHARACTER_SUMMARY_L_FILTER_OPTIONS = ("All L Values", "RB", "O", "P", "R", "B", "G")
-CHARACTER_SUMMARY_R_FILTER_OPTIONS = ("All R Values", "Blank / 0", "1", "2", "3", "4", "5", "6", "7", "8")
+CHARACTER_SUMMARY_L_FILTER_OPTIONS = (
+    "All L Values",
+    *(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "P", "R", "B", "G")),
+    'None',
+)
+CHARACTER_SUMMARY_R_FILTER_OPTIONS = ("All R Values", "0", "1", "2", "3", "4", "5", "6", "7", "8")
 CHARACTER_IW_TYPE_OPTIONS = (
     "Bari",
     "Runda",
@@ -120,3 +155,4 @@ FORMATION_SLOT_LABELS = {
     "back_1": "Back 1",
     "back_2": "Back 2",
 }
+

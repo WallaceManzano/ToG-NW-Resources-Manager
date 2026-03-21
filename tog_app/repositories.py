@@ -1,10 +1,18 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from pathlib import Path
 
 from .constants import DEFAULT_HEADERS, FORMATION_SLOT_ORDER, TEAM_OPTIONS
-from .helpers import empty_team_map, normalize_team_entry
+from .helpers import (
+    canonical_character_field_label,
+    canonical_character_field_value,
+    empty_team_map,
+    normalize_team_entry,
+    storage_character_headers,
+    storage_character_row,
+    storage_character_version_key,
+)
 
 
 class CharacterRepository:
@@ -16,8 +24,17 @@ class CharacterRepository:
         if self.json_path.exists():
             return
         self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_payload(self.build_payload([]))
+
+    def build_payload(self, rows: list[dict[str, str]]) -> dict[str, object]:
+        return {
+            "headers": storage_character_headers(),
+            "rows": [storage_character_row(row) for row in rows],
+        }
+
+    def _write_payload(self, payload: dict[str, object]) -> None:
         with self.json_path.open("w", encoding="utf-8") as json_file:
-            json.dump({"headers": self.headers, "rows": []}, json_file, indent=2)
+            json.dump(payload, json_file, indent=2)
 
     def load(self) -> list[dict[str, str]]:
         self.ensure_file()
@@ -25,52 +42,37 @@ class CharacterRepository:
             payload = json.load(json_file)
 
         if isinstance(payload, dict):
-            file_headers = payload.get("headers", [])
             raw_rows = payload.get("rows", [])
         elif isinstance(payload, list):
-            file_headers = self.headers
             raw_rows = payload
         else:
-            file_headers = self.headers
             raw_rows = []
-
-        if isinstance(file_headers, list) and file_headers:
-            self.headers = [
-                "IW Type" if str(header) == "Type" else str(header)
-                for header in file_headers
-            ]
-        else:
-            self.headers = list(DEFAULT_HEADERS)
 
         rows: list[dict[str, str]] = []
         if isinstance(raw_rows, list):
             for row in raw_rows:
                 if not isinstance(row, dict):
                     continue
+                normalized_source = {
+                    canonical_character_field_label(str(key)): canonical_character_field_value(str(key), str(value or ""))
+                    for key, value in row.items()
+                }
                 normalized = {
-                    header: str(
-                        row.get(header, row.get("Type", "") if header == "IW Type" else "")
-                        or ""
-                    ).strip()
-                    for header in self.headers
+                    header: normalized_source.get(header, "")
+                    for header in DEFAULT_HEADERS
                 }
                 if any(normalized.values()):
                     rows.append(normalized)
 
         self.headers = list(DEFAULT_HEADERS)
+        expected_payload = self.build_payload(rows)
+        if payload != expected_payload:
+            self._write_payload(expected_payload)
         return rows
 
     def save(self, rows: list[dict[str, str]]) -> None:
         self.json_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "headers": self.headers,
-            "rows": [
-                {header: str(row.get(header, "") or "") for header in self.headers}
-                for row in rows
-            ],
-        }
-        with self.json_path.open("w", encoding="utf-8") as json_file:
-            json.dump(payload, json_file, indent=2)
+        self._write_payload(self.build_payload(rows))
 
 
 class FormationRepository:
@@ -82,6 +84,35 @@ class FormationRepository:
             return
         self.json_path.parent.mkdir(parents=True, exist_ok=True)
         self.save([])
+
+    def build_payload(self, formations: list[dict[str, object]]) -> list[dict[str, object]]:
+        payload = []
+        for entry in formations:
+            teams = entry.get("teams", {})
+            payload.append(
+                {
+                    "formation_name": str(entry.get("formation_name", "") or "").strip(),
+                    "teams": {
+                        team_name: {
+                            "Note": str(
+                                teams.get(team_name, {}).get("Note", "") or ""
+                            ).strip(),
+                            **{
+                                slot_key: storage_character_version_key(
+                                    str(teams.get(team_name, {}).get(slot_key, "") or "").strip()
+                                )
+                                for slot_key in FORMATION_SLOT_ORDER
+                            },
+                        }
+                        for team_name in TEAM_OPTIONS
+                    },
+                }
+            )
+        return payload
+
+    def _write_payload(self, payload: list[dict[str, object]]) -> None:
+        with self.json_path.open("w", encoding="utf-8") as json_file:
+            json.dump(payload, json_file, indent=2)
 
     def load(self) -> list[dict[str, object]]:
         self.ensure_file()
@@ -118,35 +149,15 @@ class FormationRepository:
                     "teams": normalized_teams,
                 }
             )
+
+        expected_payload = self.build_payload(formations)
+        if raw_data != expected_payload:
+            self._write_payload(expected_payload)
         return formations
 
     def save(self, formations: list[dict[str, object]]) -> None:
         self.json_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = []
-        for entry in formations:
-            teams = entry.get("teams", {})
-            payload.append(
-                {
-                    "formation_name": str(entry.get("formation_name", "") or "").strip(),
-                    "teams": {
-                        team_name: {
-                            "Note": str(
-                                teams.get(team_name, {}).get("Note", "") or ""
-                            ).strip(),
-                            **{
-                                slot_key: str(
-                                    teams.get(team_name, {}).get(slot_key, "") or ""
-                                ).strip()
-                                for slot_key in FORMATION_SLOT_ORDER
-                            },
-                        }
-                        for team_name in TEAM_OPTIONS
-                    },
-                }
-            )
-
-        with self.json_path.open("w", encoding="utf-8") as json_file:
-            json.dump(payload, json_file, indent=2)
+        self._write_payload(self.build_payload(formations))
 
 
 class PackRepository:
@@ -249,3 +260,4 @@ class PackRepository:
 
         with self.json_path.open("w", encoding="utf-8") as json_file:
             json.dump(payload, json_file, indent=2)
+

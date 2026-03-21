@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import tkinter as tk
@@ -100,7 +100,7 @@ class CharactersPanelMixin:
         )
         self._make_combobox(
             summary_filters,
-            "R",
+            display_character_field_label("R"),
             self.character_summary_r_filter_var,
             CHARACTER_SUMMARY_R_FILTER_OPTIONS,
             0,
@@ -244,14 +244,10 @@ class CharactersPanelMixin:
 
 
     def _get_character_form_display_value(self, header: str, value: str) -> str:
-        cleaned = (value or "").strip()
-        if header == "Rarity":
-            return cleaned.upper()
-        if header == "Color":
-            return cleaned.upper()
-        if header == "L":
-            return cleaned.upper() or "Empty"
-        return cleaned
+        display_value = display_character_field_value(header, value)
+        if canonical_character_field_label(header) == "L":
+            return display_value or "Empty"
+        return display_value
 
     def _refresh_character_color_field_icon(self) -> None:
         icon_label = getattr(self, "character_color_icon_label", None)
@@ -259,13 +255,15 @@ class CharactersPanelMixin:
             return
 
         color_variable = self.variables.get("Color")
-        color_value = color_variable.get().strip().upper() if color_variable is not None else ""
-        image = self.get_color_icon_image(color_value, 20)
+        color_value = color_variable.get().strip() if color_variable is not None else ""
+        color_code = canonical_color_value(color_value)
+        color_text = display_color_value(color_value) or "-"
+        image = self.get_color_icon_image(color_code, 20)
         if image is not None:
-            icon_label.configure(image=image, text="")
+            icon_label.configure(image=image, text=color_text, compound="left")
             icon_label.image = image  # type: ignore[attr-defined]
         else:
-            icon_label.configure(image="", text=color_value or "-")
+            icon_label.configure(image="", text=color_text)
             icon_label.image = None  # type: ignore[attr-defined]
 
     def _on_character_color_selected(self) -> None:
@@ -300,7 +298,7 @@ class CharactersPanelMixin:
             values=CHARACTER_COLOR_OPTIONS,
             state="readonly",
             font=self.body_font,
-            width=5,
+            width=12,
         )
         combo.grid(row=0, column=0, sticky="w", ipady=5)
         combo.bind("<<ComboboxSelected>>", lambda _event: self._on_character_color_selected())
@@ -509,19 +507,21 @@ class CharactersPanelMixin:
 
     def matches_character_summary_filters(self, row: dict[str, str]) -> bool:
         selected_rarity = self.character_summary_rarity_filter_var.get().strip()
-        selected_color = self.character_summary_color_filter_var.get().strip()
-        selected_l = self.character_summary_l_filter_var.get().strip()
+        selected_color_raw = self.character_summary_color_filter_var.get().strip()
+        selected_l_raw = self.character_summary_l_filter_var.get().strip()
+        selected_color = "" if selected_color_raw == CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS[0] else canonical_color_value(selected_color_raw)
+        selected_l = None if selected_l_raw == CHARACTER_SUMMARY_L_FILTER_OPTIONS[0] else canonical_l_value(selected_l_raw)
         selected_r = self.character_summary_r_filter_var.get().strip()
         row_rarity = (row.get("Rarity", "") or "").strip().upper()
         row_color = (row.get("Color", "") or "").strip().upper()
-        row_l = (row.get("L", "") or "").strip().upper()
+        row_l = canonical_l_value(row.get("L", ""))
         row_r = self.get_character_summary_r_filter_value(row.get("R", ""))
 
         if selected_rarity and selected_rarity != CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS[0] and row_rarity != selected_rarity:
             return False
         if selected_color and selected_color != CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS[0] and row_color != selected_color:
             return False
-        if selected_l and selected_l != CHARACTER_SUMMARY_L_FILTER_OPTIONS[0] and row_l != selected_l:
+        if selected_l is not None and row_l != selected_l:
             return False
         if selected_r and selected_r != CHARACTER_SUMMARY_R_FILTER_OPTIONS[0] and row_r != selected_r:
             return False
@@ -637,6 +637,7 @@ class CharactersPanelMixin:
         name = row.get("Name", "") or "Unnamed Character"
         rarity = row.get("Rarity", "")
         color_value = row.get("Color", "")
+        color_display = display_color_value(color_value)
         iw_type = row.get("IW Type", "")
         iw_status_class = row.get("IW Status Class", "")
         iw_status_s4 = row.get("IW Status S4", "")
@@ -706,12 +707,20 @@ class CharactersPanelMixin:
                 "anchor": "w",
             }
             if color_icon is not None:
-                label = tk.Label(meta_row, image=color_icon, **label_kwargs)
+                label = tk.Label(
+                    meta_row,
+                    image=color_icon,
+                    text=color_display,
+                    fg=TEXT_MUTED,
+                    font=self.card_meta_font,
+                    compound="left",
+                    **label_kwargs,
+                )
                 label.image = color_icon  # type: ignore[attr-defined]
             else:
                 label = tk.Label(
                     meta_row,
-                    text=color_value,
+                    text=color_display or color_value,
                     fg=TEXT_MUTED,
                     font=self.card_meta_font,
                     **label_kwargs,
@@ -898,13 +907,10 @@ class CharactersPanelMixin:
             self.status_var.set("Editor cleared. Ready for a new character.")
 
     def collect_form_data(self) -> dict[str, str]:
-        row = {header: self.variables[header].get().strip() for header in self.headers}
-        row["Rarity"] = row.get("Rarity", "").upper()
-        row["Color"] = row.get("Color", "").upper()
-        level_value = row.get("L", "").upper()
-        row["L"] = level_value
-        return row
-
+        return {
+            header: canonical_character_field_value(header, self.variables[header].get())
+            for header in self.headers
+        }
     def create_row(self) -> None:
         row: dict[str, str] | None = None
         previous_rows = [existing.copy() for existing in self.rows]
@@ -1137,4 +1143,10 @@ class CharactersPanelMixin:
                 font=self.body_font,
                 justify="center",
             )
+
+
+
+
+
+
 

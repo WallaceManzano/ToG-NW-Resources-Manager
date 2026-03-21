@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tkinter as tk
 from pathlib import Path
@@ -416,7 +416,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         return image
 
     def get_color_icon_image(self, value: str, size: int = 16) -> tk.PhotoImage | None:
-        color_key = value.strip().upper()
+        color_key = canonical_color_value(value)
         if not color_key:
             return None
 
@@ -444,7 +444,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         return image
 
     def get_level_star_image(self, value: str) -> tk.PhotoImage | None:
-        star_key = value.strip().upper()
+        star_key = canonical_l_value(value)
         if not star_key:
             return None
         if star_key in self.level_star_images:
@@ -474,6 +474,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         if image is not None:
             self.level_star_images[star_key] = image
         return image
+
 
 
 

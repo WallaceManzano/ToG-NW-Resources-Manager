@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -363,7 +363,13 @@ class FormationsPanelMixin:
                 wraplength=card_wraplength,
             )
             name_label.grid(row=0, column=1, sticky="ew", padx=(12, 0))
-            meta_text = f"L: {row.get('L', '-') or '-'}   B: {row.get('B', '-') or '-'}   Rarity: {row.get('Rarity', '-') or '-'} R: {row.get('R', '-') or '-'}"
+            level_display = display_character_field_value("L", row.get("L", "")) or "-"
+            meta_text = (
+                f"L: {level_display}   "
+                f"B: {row.get('B', '-') or '-'}   "
+                f"Rarity: {row.get('Rarity', '-') or '-'}   "
+                f"{display_character_field_label('R')}: {row.get('R', '-') or '-'}"
+            )
             meta_label = tk.Label(
                 card,
                 text=meta_text,
@@ -560,6 +566,7 @@ class FormationsPanelMixin:
         meta_row.grid(row=1, column=1, sticky="nw", padx=(0, 18), pady=(0, 18))
         rarity = row.get("Rarity", "")
         color_value = row.get("Color", "")
+        color_display = display_color_value(color_value)
         iw_type = row.get("IW Type", "")
         color_icon = self.get_color_icon_image(color_value, 18)
         has_meta = False
@@ -595,10 +602,24 @@ class FormationsPanelMixin:
             if has_meta:
                 add_meta_separator()
             if color_icon is not None:
-                label = tk.Label(meta_row, image=color_icon, bg=SURFACE)
+                label = tk.Label(
+                    meta_row,
+                    image=color_icon,
+                    text=color_display,
+                    bg=SURFACE,
+                    fg=TEXT_MUTED,
+                    font=self.body_font,
+                    compound="left",
+                )
                 label.image = color_icon  # type: ignore[attr-defined]
             else:
-                label = tk.Label(meta_row, text=color_value, bg=SURFACE, fg=TEXT_MUTED, font=self.body_font)
+                label = tk.Label(
+                    meta_row,
+                    text=color_display or color_value,
+                    bg=SURFACE,
+                    fg=TEXT_MUTED,
+                    font=self.body_font,
+                )
             label.pack(side="left")
             has_meta = True
 
@@ -618,7 +639,8 @@ class FormationsPanelMixin:
         detail_headers = [header for header in self.headers]
         for index, header in enumerate(detail_headers):
             raw_value = row.get(header, "")
-            value = raw_value or "-"
+            display_value = display_character_field_value(header, raw_value)
+            value = display_value or "-"
             item = tk.Frame(body, bg=SURFACE_MUTED, padx=12, pady=10, highlightthickness=1, highlightbackground=BORDER)
             item.grid(row=index // 2, column=index % 2, sticky="ew", padx=6, pady=6)
             tk.Label(
@@ -631,7 +653,17 @@ class FormationsPanelMixin:
             if header == "Color":
                 color_icon = self.get_color_icon_image(raw_value, 20)
                 if color_icon is not None:
-                    value_label = tk.Label(item, image=color_icon, bg=SURFACE_MUTED)
+                    value_label = tk.Label(
+                        item,
+                        image=color_icon,
+                        text=value,
+                        bg=SURFACE_MUTED,
+                        fg=TEXT,
+                        font=self.body_font,
+                        compound="left",
+                        justify="left",
+                        wraplength=180,
+                    )
                     value_label.image = color_icon  # type: ignore[attr-defined]
                 else:
                     value_label = tk.Label(item, text=value, bg=SURFACE_MUTED, fg=TEXT, font=self.body_font, justify="left", wraplength=180)
@@ -1206,10 +1238,11 @@ class FormationsPanelMixin:
 
     def find_character_row(self, character_name: str) -> dict[str, str] | None:
         target_value = (character_name or "").strip()
+        target_key = canonical_character_version_key(target_value)
         if not target_value:
             return None
         for row in self.rows:
-            if character_version_key(row) == target_value:
+            if character_version_key(row) == target_key:
                 return row
         target_name = normalize_character_name(target_value)
         for row in self.rows:
@@ -1226,6 +1259,10 @@ class FormationsPanelMixin:
     ) -> bool:
         if left_row is not None and right_row is not None:
             return character_version_key(left_row) == character_version_key(right_row)
+        left_key = canonical_character_version_key(left_value)
+        right_key = canonical_character_version_key(right_value)
+        if "||" in left_key or "||" in right_key:
+            return left_key == right_key
         return normalize_character_name(left_value) == normalize_character_name(right_value)
 
     def can_assign_character_to_team(
@@ -1273,19 +1310,27 @@ class FormationsPanelMixin:
         ]
 
     def matches_roster_filters(self, row: dict[str, str]) -> bool:
-        selected_color = self.formation_color_filter_var.get().strip()
+        selected_color_raw = self.formation_color_filter_var.get().strip()
         selected_rarity = self.formation_rarity_filter_var.get().strip()
-        row_color = (row.get("Color", "") or "").strip()
+        selected_color = "" if selected_color_raw == "All Colors" else canonical_color_value(selected_color_raw)
+        row_color = canonical_color_value(row.get("Color", ""))
         row_rarity = (row.get("Rarity", "") or "").strip()
-        if selected_color and selected_color != "All Colors" and row_color != selected_color:
+        if selected_color and row_color != selected_color:
             return False
         if selected_rarity and selected_rarity != "All Rarities" and row_rarity != selected_rarity:
             return False
         return True
 
     def get_roster_color_filter_options(self) -> tuple[str, ...]:
-        colors = sorted({(row.get("Color", "") or "").strip() for row in self.rows if (row.get("Color", "") or "").strip()})
-        return ("All Colors", *colors)
+        colors = sorted(
+            {
+                canonical_color_value(row.get("Color", ""))
+                for row in self.rows
+                if canonical_color_value(row.get("Color", ""))
+            },
+            key=lambda value: COLOR_ORDER.get(value, len(COLOR_ORDER)),
+        )
+        return ("All Colors", *(display_color_value(color) for color in colors))
 
     def get_roster_rarity_filter_options(self) -> tuple[str, ...]:
         rarities = sorted(
@@ -1444,4 +1489,5 @@ class FormationsPanelMixin:
     def highlight_active_slot(self, active_slot: str | None) -> None:
         for slot_key, frame in self.formation_slot_frames.items():
             frame.configure(highlightbackground=PRIMARY if slot_key == active_slot else BORDER)
+
 
