@@ -11,8 +11,8 @@ Its current goal is to help manage:
 ## What The App Does
 
 - Organizes the UI into `Characters` and `Formations` tabs
-- Stores character data in [characters.json](/C:/ToG/db/characters.json)
-- Stores formation data in [formations.json](/C:/ToG/db/formations.json)
+- Stores character data in [characters.json](db/characters.json)
+- Stores formation data in [formations.json](db/formations.json)
 - Creates, reads, updates, and deletes characters
 - Imports character icons from `http` or `https` PNG URLs
 - Saves downloaded icons into `imported_icons/`
@@ -27,15 +27,15 @@ Its current goal is to help manage:
 
 ## Project Structure
 
-- [app.py](/C:/ToG/app.py): small launcher
-- [tog_app/app_window.py](/C:/ToG/tog_app/app_window.py): main app window
-- [tog_app/constants.py](/C:/ToG/tog_app/constants.py): shared constants
-- [tog_app/helpers.py](/C:/ToG/tog_app/helpers.py): shared helper functions
-- [tog_app/repositories.py](/C:/ToG/tog_app/repositories.py): JSON persistence
-- [tog_app/panels/characters.py](/C:/ToG/tog_app/panels/characters.py): Characters tab/panel logic
-- [tog_app/panels/formations.py](/C:/ToG/tog_app/panels/formations.py): Formations tab/panel logic
-- [characters.json](/C:/ToG/db/characters.json): character store
-- [formations.json](/C:/ToG/db/formations.json): formation store
+- [app.py](app.py): small launcher
+- [tog_app/app_window.py](tog_app/app_window.py): main app window
+- [tog_app/constants.py](tog_app/constants.py): shared constants
+- [tog_app/helpers.py](tog_app/helpers.py): shared helper functions
+- [tog_app/repositories.py](tog_app/repositories.py): JSON persistence
+- [tog_app/panels/characters.py](tog_app/panels/characters.py): Characters tab/panel logic
+- [tog_app/panels/formations.py](tog_app/panels/formations.py): Formations tab/panel logic
+- [characters.json](db/characters.json): character store
+- [formations.json](db/formations.json): formation store
 - `assets/`: local visual assets
 - `imported_icons/`: downloaded icon files
 

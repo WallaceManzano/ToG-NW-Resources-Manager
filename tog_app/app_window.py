@@ -58,7 +58,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.item_base_value_var = tk.StringVar()
         self.item_base_total_var = tk.StringVar(value="0")
         self.item_catalog_search_var = tk.StringVar()
-        self.gacha_mode_var = tk.StringVar(value="Pull Until Maxed")
+        self.gacha_mode_var = tk.StringVar(value="Fixed Pull Budget")
         self.gacha_trials_var = tk.StringVar(value="10000")
         self.gacha_target_copies_var = tk.StringVar(value="22")
         self.gacha_rate_var = tk.StringVar(value="1")
@@ -332,6 +332,40 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
             font=self.body_font,
         ).grid(row=1, column=0, sticky="ew", pady=(6, 0), ipady=8)
 
+    def _make_combobox(
+        self,
+        parent: tk.Misc,
+        label: str,
+        variable: tk.StringVar,
+        values: tuple[str, ...],
+        row: int,
+        column: int,
+        columnspan: int = 1,
+        on_select=None,
+    ) -> ttk.Combobox:
+        field = tk.Frame(parent, bg=SURFACE)
+        field.grid(row=row, column=column, columnspan=columnspan, sticky="ew", padx=10, pady=8)
+        field.columnconfigure(0, weight=1)
+
+        tk.Label(
+            field,
+            text=label,
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.label_font,
+        ).grid(row=0, column=0, sticky="w")
+
+        combo = ttk.Combobox(
+            field,
+            textvariable=variable,
+            values=values,
+            state="readonly",
+            font=self.body_font,
+        )
+        combo.grid(row=1, column=0, sticky="ew", pady=(6, 0), ipady=5)
+        if on_select is not None:
+            combo.bind("<<ComboboxSelected>>", lambda _event: on_select())
+        return combo
     def get_summary_image(
         self,
         icon_value: str,
@@ -381,10 +415,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         if not color_key:
             return None
 
-        cache_key = f"{color_key}|{size}"
-        if cache_key in self.color_icon_images:
-            return self.color_icon_images[cache_key]
-
         asset_path = COLOR_ICON_ASSET_PATHS.get(color_key)
         if asset_path is None or not asset_path.exists():
             return None
@@ -406,8 +436,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
             except tk.TclError:
                 image = None
 
-        if image is not None:
-            self.color_icon_images[cache_key] = image
         return image
 
     def get_level_star_image(self, value: str) -> tk.PhotoImage | None:

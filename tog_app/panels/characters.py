@@ -195,6 +195,98 @@ class CharactersPanelMixin:
             ).grid(row=0, column=2, padx=(10, 0), sticky="e")
 
 
+    def _get_character_form_display_value(self, header: str, value: str) -> str:
+        cleaned = (value or "").strip()
+        if header == "Rarity":
+            return cleaned.upper()
+        if header == "Color":
+            return cleaned.upper()
+        if header == "L":
+            return cleaned.upper() or "Empty"
+        return cleaned
+
+    def _refresh_character_color_field_icon(self) -> None:
+        icon_label = getattr(self, "character_color_icon_label", None)
+        if icon_label is None or not icon_label.winfo_exists():
+            return
+
+        color_variable = self.variables.get("Color")
+        color_value = color_variable.get().strip().upper() if color_variable is not None else ""
+        image = self.get_color_icon_image(color_value, 20)
+        if image is not None:
+            icon_label.configure(image=image, text="")
+            icon_label.image = image  # type: ignore[attr-defined]
+        else:
+            icon_label.configure(image="", text=color_value or "-")
+            icon_label.image = None  # type: ignore[attr-defined]
+
+    def _on_character_color_selected(self) -> None:
+        self.update_icon_preview()
+
+    def _make_character_color_combobox(
+        self,
+        parent: tk.Misc,
+        label: str,
+        variable: tk.StringVar,
+        row: int,
+        column: int,
+    ) -> None:
+        field = tk.Frame(parent, bg=SURFACE)
+        field.grid(row=row, column=column, sticky="ew", padx=10, pady=8)
+        field.columnconfigure(0, weight=1)
+
+        tk.Label(
+            field,
+            text=label,
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.label_font,
+        ).grid(row=0, column=0, sticky="w")
+
+        input_row = tk.Frame(field, bg=SURFACE)
+        input_row.grid(row=1, column=0, sticky="w", pady=(6, 0))
+
+        combo = ttk.Combobox(
+            input_row,
+            textvariable=variable,
+            values=CHARACTER_COLOR_OPTIONS,
+            state="readonly",
+            font=self.body_font,
+            width=5,
+        )
+        combo.grid(row=0, column=0, sticky="w", ipady=5)
+        combo.bind("<<ComboboxSelected>>", lambda _event: self._on_character_color_selected())
+
+        self.character_color_icon_label = tk.Label(
+            input_row,
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.body_font,
+            anchor="center",
+            width=20,
+        )
+        self.character_color_icon_label.grid(row=0, column=1, padx=(8, 0))
+        self._refresh_character_color_field_icon()
+
+    def _render_character_form_field(
+        self,
+        parent: tk.Misc,
+        header: str,
+        row: int,
+        column: int,
+    ) -> None:
+        label = display_character_field_label(header)
+        variable = self.variables[header]
+        if header == "Rarity":
+            self._make_combobox(parent, label, variable, CHARACTER_RARITY_OPTIONS, row, column)
+        elif header == "Color":
+            self._make_character_color_combobox(parent, label, variable, row, column)
+        elif header == "L":
+            self._make_combobox(parent, label, variable, CHARACTER_L_OPTIONS, row, column)
+        elif header == "IW Type":
+            self._make_combobox(parent, label, variable, CHARACTER_IW_TYPE_OPTIONS, row, column)
+        else:
+            self._make_input(parent, label, variable, row, column)
     def render_form_fields(self) -> None:
         for child in self.form_frame.winfo_children():
             child.destroy()
@@ -269,13 +361,7 @@ class CharactersPanelMixin:
         for index, header in enumerate(fields):
             row = 1 + (index // 3)
             column = index % 3
-            self._make_input(
-                self.form_frame,
-                display_character_field_label(header),
-                self.variables[header],
-                row,
-                column,
-            )
+            self._render_character_form_field(self.form_frame, header, row, column)
 
         self.update_icon_preview()
 
@@ -313,12 +399,12 @@ class CharactersPanelMixin:
             L_ORDER.get((row.get("L", "") or "").strip().upper(), len(L_ORDER)),
             -parse_int(row.get("B", "")),
             -parse_int(row.get("R", "")),
-            RARITY_ORDER.get((row.get("Rarity", "") or "").strip(), len(RARITY_ORDER)),
+            RARITY_ORDER.get((row.get("Rarity", "") or "").strip().upper(), len(RARITY_ORDER)),
         )
 
     def row_sort_key_rarity(self, row: dict[str, str]) -> tuple[int, int, int, int]:
         return (
-            RARITY_ORDER.get((row.get("Rarity", "") or "").strip(), len(RARITY_ORDER)),
+            RARITY_ORDER.get((row.get("Rarity", "") or "").strip().upper(), len(RARITY_ORDER)),
             L_ORDER.get((row.get("L", "") or "").strip().upper(), len(L_ORDER)),
             -parse_int(row.get("B", "")),
             -parse_int(row.get("R", "")),
@@ -327,7 +413,7 @@ class CharactersPanelMixin:
     def row_sort_key_color(self, row: dict[str, str]) -> tuple[int, int, int, int, int]:
         return (
             COLOR_ORDER.get((row.get("Color", "") or "").strip().upper(), len(COLOR_ORDER)),
-            RARITY_ORDER.get((row.get("Rarity", "") or "").strip(), len(RARITY_ORDER)),
+            RARITY_ORDER.get((row.get("Rarity", "") or "").strip().upper(), len(RARITY_ORDER)),
             L_ORDER.get((row.get("L", "") or "").strip().upper(), len(L_ORDER)),
             -parse_int(row.get("B", "")),
             -parse_int(row.get("R", "")),
@@ -663,7 +749,7 @@ class CharactersPanelMixin:
         self.selected_index = index
         row = self.rows[index]
         for header in self.headers:
-            self.variables[header].set(row.get(header, ""))
+            self.variables[header].set(self._get_character_form_display_value(header, row.get(header, "")))
 
         self.selected_title_var.set(row.get("Name", "") or "Unnamed Character")
         self.summary_images.clear()
@@ -675,7 +761,8 @@ class CharactersPanelMixin:
     def clear_form(self, keep_status: bool = False) -> None:
         self.selected_index = None
         for header in self.headers:
-            self.variables[header].set("")
+            default_value = "Empty" if header == "L" else ""
+            self.variables[header].set(default_value)
 
         self.selected_title_var.set("New Character")
         self.summary_images.clear()
@@ -686,7 +773,12 @@ class CharactersPanelMixin:
             self.status_var.set("Editor cleared. Ready for a new character.")
 
     def collect_form_data(self) -> dict[str, str]:
-        return {header: self.variables[header].get().strip() for header in self.headers}
+        row = {header: self.variables[header].get().strip() for header in self.headers}
+        row["Rarity"] = row.get("Rarity", "").upper()
+        row["Color"] = row.get("Color", "").upper()
+        level_value = row.get("L", "").upper()
+        row["L"] = "" if level_value == "EMPTY" else level_value
+        return row
 
     def create_row(self) -> None:
         row: dict[str, str] | None = None
@@ -842,6 +934,7 @@ class CharactersPanelMixin:
         return destination.relative_to(BASE_DIR).as_posix()
 
     def update_icon_preview(self) -> None:
+        self._refresh_character_color_field_icon()
         self.preview_holder.delete("all")
         icon_value = self.variables["Icon"].get().strip()
         border = get_color_border(self.variables["Color"].get())

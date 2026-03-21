@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 GACHA_MODE_MAX = "Pull Until Maxed"
 GACHA_MODE_BUDGET = "Fixed Pull Budget"
-GACHA_MODE_OPTIONS = (GACHA_MODE_MAX, GACHA_MODE_BUDGET)
+GACHA_MODE_OPTIONS = (GACHA_MODE_BUDGET, GACHA_MODE_MAX)
 
 
 class GachaPanelMixin:
@@ -129,7 +129,7 @@ class GachaPanelMixin:
         options_row.columnconfigure(0, weight=1)
         self.gacha_hard_pity_check = tk.Checkbutton(
             options_row,
-            text="Natural target pulls reset the pity counter",
+            text="Hard pity",
             variable=self.gacha_hard_pity_var,
             command=self.on_gacha_settings_changed,
             bg=SURFACE_MUTED,

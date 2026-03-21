@@ -80,8 +80,27 @@ COLOR_ICON_ASSET_PATHS = {
     "Y": ASSETS_DIR / "color_Y.png",
     "D": ASSETS_DIR / "color_D.png",
 }
+CHARACTER_RARITY_OPTIONS = ("SSR", "SSR+", "XSR+", "EX")
+CHARACTER_COLOR_OPTIONS = ("R", "G", "B", "D", "Y")
+CHARACTER_L_OPTIONS = ("RB", "O", "P", "R", "B", "G", "Empty")
+CHARACTER_IW_TYPE_OPTIONS = (
+    "Bari",
+    "Runda",
+    "Rafflesia",
+    "Doris",
+    "Ei",
+    "Abgrund",
+    "Sundance",
+    "Alocasia",
+    "Myeongwoi",
+    "Idea",
+    "Mago",
+    "Raihanna",
+    "Sela",
+    "Bergamot",
+)
 L_ORDER = {"RB": 0, "O": 1, "P": 2, "R": 3, "B": 4, "G": 5, "-": 6, "": 6}
-RARITY_ORDER = {"Ex": 0, "SSR+": 1, "XSR+": 2, "SSR": 3}
+RARITY_ORDER = {"EX": 0, "SSR+": 1, "XSR+": 2, "SSR": 3}
 COLOR_ORDER = {"D": 0, "Y": 1, "R": 2, "G": 3, "B": 4}
 SORT_OPTIONS = ("Sort by LB", "Sort by Rarity", "Sort by Color")
 FORMATION_SLOT_ORDER = ("front_1", "front_2", "front_3", "back_1", "back_2")
