@@ -327,7 +327,7 @@ class GachaPanelMixin:
 
     def _run_gacha_simulation_worker(self, request_id: int, config: dict[str, object]) -> None:
         try:
-            from ..mcsim_ex_tog import monte_carlo_simulation, summarize_results
+            from ..mcsim import monte_carlo_simulation, summarize_results
 
             results = monte_carlo_simulation(
                 num_trials=int(config["num_trials"]),
