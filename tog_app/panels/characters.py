@@ -70,6 +70,7 @@ class CharactersPanelMixin:
         summary_filters.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(12, 0))
         for column in range(4):
             summary_filters.columnconfigure(column, weight=1)
+        summary_filters.columnconfigure(4, weight=0)
 
         self._make_combobox(
             summary_filters,
@@ -107,6 +108,22 @@ class CharactersPanelMixin:
             3,
             on_select=self.on_character_summary_filter_changed,
         )
+        reset_field = tk.Frame(summary_filters, bg=SURFACE)
+        reset_field.grid(row=0, column=4, sticky="ew", padx=10, pady=8)
+        reset_field.columnconfigure(0, weight=1)
+        tk.Label(
+            reset_field,
+            text=" ",
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.label_font,
+        ).grid(row=0, column=0, sticky="w")
+        self._make_button(
+            reset_field,
+            "Reset Filters",
+            self.reset_character_summary_filters,
+            filled=False,
+        ).grid(row=1, column=0, sticky="ew", pady=(6, 0))
 
         summary_list_wrap = tk.Frame(self.summary_panel, bg=SURFACE)
         summary_list_wrap.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 16))
@@ -544,9 +561,17 @@ class CharactersPanelMixin:
 
     def on_character_summary_filter_changed(self) -> None:
         self.refresh_summary(select_index=self.selected_index)
+        self.summary_canvas.yview_moveto(0)
         self.update_summary_count()
         self.status_var.set("Updated character summary filters.")
 
+    def reset_character_summary_filters(self) -> None:
+        self.character_summary_rarity_filter_var.set(CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS[0])
+        self.character_summary_color_filter_var.set(CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS[0])
+        self.character_summary_l_filter_var.set(CHARACTER_SUMMARY_L_FILTER_OPTIONS[0])
+        self.character_summary_r_filter_var.set(CHARACTER_SUMMARY_R_FILTER_OPTIONS[0])
+        self.on_character_summary_filter_changed()
+        self.status_var.set("Reset character summary filters.")
     def refresh_summary(self, select_index: int | None) -> None:
         for child in self.summary_container.winfo_children():
             child.destroy()
@@ -1143,6 +1168,11 @@ class CharactersPanelMixin:
                 font=self.body_font,
                 justify="center",
             )
+
+
+
+
+
 
 
 
