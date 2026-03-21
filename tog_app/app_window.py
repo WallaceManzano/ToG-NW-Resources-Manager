@@ -48,6 +48,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.item_base_summary_var = tk.StringVar(value="0 catalog items")
         self.team_name_var = tk.StringVar(value=TEAM_OPTIONS[0])
         self.formation_name_var = tk.StringVar()
+        self.team_note_var = tk.StringVar()
         self.pack_name_var = tk.StringVar()
         self.pack_price_brl_var = tk.StringVar()
         self.pack_price_usd_var = tk.StringVar(value="US$ 0")

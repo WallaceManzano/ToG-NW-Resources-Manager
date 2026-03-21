@@ -54,8 +54,25 @@ def empty_slot_map() -> dict[str, str]:
     return {slot_key: "" for slot_key in FORMATION_SLOT_ORDER}
 
 
+def empty_team_entry() -> dict[str, str]:
+    entry = empty_slot_map()
+    entry["Note"] = ""
+    return entry
+
+
 def empty_team_map() -> dict[str, dict[str, str]]:
-    return {team_name: empty_slot_map() for team_name in TEAM_OPTIONS}
+    return {team_name: empty_team_entry() for team_name in TEAM_OPTIONS}
+
+
+def normalize_team_entry(value: object) -> dict[str, str]:
+    normalized = empty_team_entry()
+    if not isinstance(value, dict):
+        return normalized
+
+    for slot_key in FORMATION_SLOT_ORDER:
+        normalized[slot_key] = str(value.get(slot_key, "") or "").strip()
+    normalized["Note"] = str(value.get("Note", "") or "").strip()
+    return normalized
 
 
 def sanitize_filename(value: str) -> str:

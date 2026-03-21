@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 from .constants import DEFAULT_HEADERS, FORMATION_SLOT_ORDER, TEAM_OPTIONS
-from .helpers import empty_team_map
+from .helpers import empty_team_map, normalize_team_entry
 
 
 class CharacterRepository:
@@ -100,21 +100,17 @@ class FormationRepository:
             raw_teams = entry.get("teams")
             if isinstance(raw_teams, dict):
                 for team_name in TEAM_OPTIONS:
-                    team_slots = raw_teams.get(team_name, {})
-                    normalized_teams[team_name] = {
-                        slot_key: str(team_slots.get(slot_key, "") or "").strip()
-                        for slot_key in FORMATION_SLOT_ORDER
-                    }
+                    normalized_teams[team_name] = normalize_team_entry(
+                        raw_teams.get(team_name, {})
+                    )
             else:
                 legacy_team_name = (
                     str(entry.get("team_name", "") or TEAM_OPTIONS[0]).strip()
                     or TEAM_OPTIONS[0]
                 )
-                legacy_slots = entry.get("slots", {})
-                normalized_teams[legacy_team_name] = {
-                    slot_key: str(legacy_slots.get(slot_key, "") or "").strip()
-                    for slot_key in FORMATION_SLOT_ORDER
-                }
+                normalized_teams[legacy_team_name] = normalize_team_entry(
+                    entry.get("slots", {})
+                )
 
             formations.append(
                 {
@@ -134,10 +130,15 @@ class FormationRepository:
                     "formation_name": str(entry.get("formation_name", "") or "").strip(),
                     "teams": {
                         team_name: {
-                            slot_key: str(
-                                teams.get(team_name, {}).get(slot_key, "") or ""
-                            ).strip()
-                            for slot_key in FORMATION_SLOT_ORDER
+                            "Note": str(
+                                teams.get(team_name, {}).get("Note", "") or ""
+                            ).strip(),
+                            **{
+                                slot_key: str(
+                                    teams.get(team_name, {}).get(slot_key, "") or ""
+                                ).strip()
+                                for slot_key in FORMATION_SLOT_ORDER
+                            },
                         }
                         for team_name in TEAM_OPTIONS
                     },

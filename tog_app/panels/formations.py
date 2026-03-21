@@ -210,6 +210,7 @@ class FormationsPanelMixin:
         team_picker.grid(row=1, column=0, sticky="ew", pady=(6, 0), ipady=4)
         team_picker.bind("<<ComboboxSelected>>", self.on_team_selection_changed)
         self._make_input(details_card, "Formation", self.formation_name_var, 0, 1)
+        self._make_input(details_card, "Team Note", self.team_note_var, 1, 0, columnspan=2)
 
         guidance = tk.Label(
             details_card,
@@ -219,10 +220,10 @@ class FormationsPanelMixin:
             font=self.body_font,
             justify="left",
         )
-        guidance.grid(row=1, column=0, columnspan=2, sticky="w", padx=10, pady=(6, 0))
+        guidance.grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(6, 0))
 
         details_actions = tk.Frame(details_card, bg=SURFACE_MUTED)
-        details_actions.grid(row=2, column=0, columnspan=2, sticky="e", padx=10, pady=(12, 0))
+        details_actions.grid(row=3, column=0, columnspan=2, sticky="e", padx=10, pady=(12, 0))
         if self.selected_formation_index is None:
             self._make_button(details_actions, "Create", self.create_formation, filled=True).pack(anchor="e")
         else:
@@ -797,11 +798,11 @@ class FormationsPanelMixin:
         total_characters = 0
         team_assignments: dict[str, list[str]] = {}
         for team_name in TEAM_OPTIONS:
-            slots = teams.get(team_name, {})
+            team_entry = normalize_team_entry(teams.get(team_name, {}))
             assigned = [
-                str(slots.get(slot_key, "") or "").strip()
+                str(team_entry.get(slot_key, "") or "").strip()
                 for slot_key in FORMATION_SLOT_ORDER
-                if str(slots.get(slot_key, "") or "").strip()
+                if str(team_entry.get(slot_key, "") or "").strip()
             ]
             if assigned:
                 active_teams.append(team_name)
@@ -975,6 +976,7 @@ class FormationsPanelMixin:
     def clear_formation_form(self, keep_status: bool = False, reopen: bool = True) -> None:
         self.selected_formation_index = None
         self.formation_name_var.set("")
+        self.team_note_var.set("")
         self.pending_slot_character = None
         self.pending_slot_origin = None
         self.editor_teams = empty_team_map()
@@ -1000,11 +1002,7 @@ class FormationsPanelMixin:
         if not isinstance(teams, dict):
             return cloned
         for team_name in TEAM_OPTIONS:
-            team_slots = teams.get(team_name, {})
-            cloned[team_name] = {
-                slot_key: str(team_slots.get(slot_key, "") or "").strip()
-                for slot_key in FORMATION_SLOT_ORDER
-            }
+            cloned[team_name] = normalize_team_entry(teams.get(team_name, {}))
         return cloned
 
     def get_first_populated_team(self, teams: dict[str, dict[str, str]]) -> str:
@@ -1016,14 +1014,16 @@ class FormationsPanelMixin:
 
     def sync_active_team_slots(self) -> None:
         active_team = self.active_editor_team or TEAM_OPTIONS[0]
-        self.editor_teams.setdefault(active_team, empty_slot_map())
+        self.editor_teams.setdefault(active_team, empty_team_entry())
         for slot_key in FORMATION_SLOT_ORDER:
             self.editor_teams[active_team][slot_key] = self.formation_slot_keys.get(slot_key, "")
+        self.editor_teams[active_team]["Note"] = self.team_note_var.get().strip()
 
     def load_team_slots_into_editor(self, team_name: str) -> None:
         self.active_editor_team = team_name if team_name in TEAM_OPTIONS else TEAM_OPTIONS[0]
         self.team_name_var.set(self.active_editor_team)
-        self.editor_teams.setdefault(self.active_editor_team, empty_slot_map())
+        self.editor_teams.setdefault(self.active_editor_team, empty_team_entry())
+        self.team_note_var.set(str(self.editor_teams[self.active_editor_team].get("Note", "") or ""))
         for slot_key in FORMATION_SLOT_ORDER:
             slot_value = self.editor_teams[self.active_editor_team].get(slot_key, "")
             self.formation_slot_keys[slot_key] = slot_value
@@ -1250,10 +1250,10 @@ class FormationsPanelMixin:
     def get_roster_rows_for_active_team(self) -> list[dict[str, str]]:
         self.sync_active_team_slots()
         assigned_keys = {
-            assigned_name
+            str(self.editor_teams.get(team_name, {}).get(slot_key, "") or "").strip()
             for team_name in TEAM_OPTIONS
-            for assigned_name in self.editor_teams.get(team_name, {}).values()
-            if assigned_name
+            for slot_key in FORMATION_SLOT_ORDER
+            if str(self.editor_teams.get(team_name, {}).get(slot_key, "") or "").strip()
         }
         return [
             row
