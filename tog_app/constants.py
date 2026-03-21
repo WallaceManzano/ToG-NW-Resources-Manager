@@ -36,6 +36,9 @@ DEFAULT_HEADERS = [
     "IW3",
     "IW4",
     "IW5",
+    "IW Status Class",
+    "IW Status S4",
+    "IW Status S5",
 ]
 
 PRIMARY = "#1565C0"
@@ -80,9 +83,9 @@ COLOR_ICON_ASSET_PATHS = {
     "Y": ASSETS_DIR / "color_Y.png",
     "D": ASSETS_DIR / "color_D.png",
 }
-CHARACTER_RARITY_OPTIONS = ("SSR", "SSR+", "XSR+", "EX")
+CHARACTER_RARITY_OPTIONS = ("EX", "SSR+", "XSR+", "SSR" )
 CHARACTER_COLOR_OPTIONS = ("R", "G", "B", "D", "Y")
-CHARACTER_L_OPTIONS = ("RB", "O", "P", "R", "B", "G", "Empty")
+CHARACTER_L_OPTIONS = ("RB", "O", "P", "R", "B", "G", "")
 CHARACTER_IW_TYPE_OPTIONS = (
     "Bari",
     "Runda",

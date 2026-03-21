@@ -14,7 +14,7 @@ Its current goal is to help manage:
 - Stores character data in [characters.json](db/characters.json)
 - Stores formation data in [formations.json](db/formations.json)
 - Creates, reads, updates, and deletes characters
-- Imports character icons from `http` or `https` PNG URLs
+- Imports character icons from `http` or `https` PNG or WebP URLs
 - Saves downloaded icons into `imported_icons/`
 - Shows character summary cards with icon, rarity, color, stars, and stats
 - Supports sorting characters by `LB`, `Rarity`, or `Color`
@@ -57,7 +57,7 @@ python app.py
 
 ## Optional Pillow Support
 
-The app works without extra packages. If you want smoother PNG scaling and previews, install Pillow:
+The app works without extra packages. If you want smoother image scaling and reliable WebP previews, install Pillow:
 
 ```powershell
 py -m pip install Pillow
@@ -66,8 +66,8 @@ py -m pip install Pillow
 ## How Icon Import Works
 
 1. Paste an image URL into the `Icon` field.
-2. Click `Import PNG URL`.
-3. The app accepts only `image/png` responses and downloads the file into `imported_icons/`.
+2. Click `Import Image URL`.
+3. The app accepts `image/png` and `image/webp` responses and downloads the file into `imported_icons/` with the matching extension.
 4. The `Icon` field is replaced with the saved relative path.
 5. Click `Create` or `Update` to save the character.
 

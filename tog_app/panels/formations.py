@@ -341,7 +341,15 @@ class FormationsPanelMixin:
                 wraplength=card_wraplength,
             )
             meta_label.grid(row=1, column=1, sticky="ew", padx=(12, 0), pady=(4, 0))
-            info_text = f"R: {row.get('R', '-') or '-'}   IW Type: {row.get('IW Type', '-') or '-'}"
+
+    
+            iw_type = row.get("IW Type", "-")
+            iw_status_class = row.get("IW Status Class", "")
+            iw_status_s4 = row.get("IW Status S4", "")
+            iw_status_s5 = row.get("IW Status S5", "")
+            iw_text = "" if iw_status_class == "" else f'{iw_status_class} {iw_status_s4}/{iw_status_s5}'
+
+            info_text = f"R: {row.get('R', '-') or '-'}   IW: {iw_type} {iw_text}"
             info_label = tk.Label(
                 card,
                 text=info_text,

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import hashlib
 import tkinter as tk
@@ -20,6 +20,12 @@ from ..helpers import *
 if TYPE_CHECKING:
     from ..app_window import TogCharacterManager
 
+
+SUPPORTED_ICON_CONTENT_TYPES = {
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
+SUPPORTED_ICON_EXTENSIONS = frozenset(SUPPORTED_ICON_CONTENT_TYPES.values())
 
 class CharactersPanelMixin:
     def _build_characters_tab(self) -> None:
@@ -328,7 +334,7 @@ class CharactersPanelMixin:
         ).grid(row=0, column=1, sticky="w", padx=(16, 0))
         tk.Label(
             icon_card,
-            text="Paste a PNG URL and import it, or keep an existing local path.",
+            text="Paste a PNG or WebP URL and import it, or keep an existing local path.",
             bg=SURFACE_MUTED,
             fg=TEXT_MUTED,
             font=self.body_font,
@@ -351,7 +357,7 @@ class CharactersPanelMixin:
             highlightcolor=PRIMARY,
             font=self.body_font,
         ).grid(row=0, column=0, sticky="ew", ipady=8)
-        self._make_button(icon_row, "Import PNG URL", self.import_icon_from_form, filled=True).grid(
+        self._make_button(icon_row, "Import Image URL", self.import_icon_from_form, filled=True).grid(
             row=0,
             column=1,
             padx=(10, 0),
@@ -521,6 +527,12 @@ class CharactersPanelMixin:
         rarity = row.get("Rarity", "")
         color_value = row.get("Color", "")
         iw_type = row.get("IW Type", "")
+        iw_status_class = row.get("IW Status Class", "")
+        iw_status_s4 = row.get("IW Status S4", "")
+        iw_status_s5 = row.get("IW Status S5", "")
+
+        iw_text = "" if iw_status_class == "" else f'{iw_status_class} {iw_status_s4}/{iw_status_s5}'
+
         color_icon = self.get_color_icon_image(color_value, 16)
         star_count = get_star_count(row.get("B", ""))
         star_image = self.get_level_star_image(row.get("L", ""))
@@ -599,7 +611,7 @@ class CharactersPanelMixin:
 
         add_meta_text(rarity)
         add_meta_color_icon()
-        add_meta_text(iw_type)
+        add_meta_text(f'{iw_type} {iw_text}')
 
         if not has_meta:
             meta_label = tk.Label(
@@ -761,7 +773,7 @@ class CharactersPanelMixin:
     def clear_form(self, keep_status: bool = False) -> None:
         self.selected_index = None
         for header in self.headers:
-            default_value = "Empty" if header == "L" else ""
+            default_value = ""
             self.variables[header].set(default_value)
 
         self.selected_title_var.set("New Character")
@@ -777,7 +789,7 @@ class CharactersPanelMixin:
         row["Rarity"] = row.get("Rarity", "").upper()
         row["Color"] = row.get("Color", "").upper()
         level_value = row.get("L", "").upper()
-        row["L"] = "" if level_value == "EMPTY" else level_value
+        row["L"] = level_value
         return row
 
     def create_row(self) -> None:
@@ -896,14 +908,14 @@ class CharactersPanelMixin:
     def import_icon_from_form(self) -> None:
         icon_value = self.variables["Icon"].get().strip()
         if not icon_value:
-            messagebox.showwarning("Missing icon URL", "Paste a PNG image URL into the Icon field first.")
+            messagebox.showwarning("Missing icon URL", "Paste a PNG or WebP image URL into the Icon field first.")
             return
 
         try:
             if is_url(icon_value):
                 saved_path = self.download_icon(icon_value, self.variables["Name"].get().strip())
                 self.variables["Icon"].set(saved_path)
-                self.status_var.set(f"Imported PNG icon to {saved_path}")
+                self.status_var.set(f"Imported icon to {saved_path}")
             self.summary_images.clear()
             self.update_icon_preview()
             if self.selected_index is not None:
@@ -921,17 +933,30 @@ class CharactersPanelMixin:
             if not content:
                 raise ValueError("The icon URL returned an empty response.")
             content_type = response.info().get_content_type()
-            if content_type != "image/png":
-                raise ValueError(
-                    f"Only PNG icons are supported. Received content type: {content_type}"
-                )
+            extension = self.resolve_icon_extension(url, content_type)
 
         seed = hashlib.sha256(url.encode("utf-8")).hexdigest()[:10]
         basename = sanitize_filename(name_hint or Path(unquote(urlparse(url).path)).stem or "icon")
-        filename = f"{basename}_{seed}.png"
+        filename = f"{basename}_{seed}{extension}"
         destination = ICON_DIR / filename
         destination.write_bytes(content)
         return destination.relative_to(BASE_DIR).as_posix()
+
+    def resolve_icon_extension(self, url: str, content_type: str | None) -> str:
+        normalized_content_type = (content_type or "").strip().lower()
+        extension = SUPPORTED_ICON_CONTENT_TYPES.get(normalized_content_type)
+        if extension is not None:
+            return extension
+
+        path_extension = Path(unquote(urlparse(url).path)).suffix.lower()
+        if path_extension in SUPPORTED_ICON_EXTENSIONS:
+            return path_extension
+
+        if normalized_content_type:
+            raise ValueError(
+                f"Only PNG and WebP icons are supported. Received content type: {normalized_content_type}"
+            )
+        raise ValueError("Only PNG and WebP icons are supported. Unable to determine the image format.")
 
     def update_icon_preview(self) -> None:
         self._refresh_character_color_field_icon()
@@ -953,7 +978,7 @@ class CharactersPanelMixin:
             self.preview_holder.create_text(
                 preview_center_x,
                 preview_center_y,
-                text="PNG URL",
+                text="Image URL",
                 fill=TEXT_MUTED,
                 font=self.body_font,
             )
@@ -999,5 +1024,4 @@ class CharactersPanelMixin:
                 font=self.body_font,
                 justify="center",
             )
-
 
