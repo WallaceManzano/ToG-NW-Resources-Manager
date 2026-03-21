@@ -75,9 +75,38 @@ class FormationsPanelMixin:
         self.formations_editor_scene = self._make_panel(self.formations_tab)
         self.formations_editor_scene.grid(row=0, column=0, sticky="nsew")
         self.formations_editor_scene.columnconfigure(0, weight=1)
-        self.formations_editor_scene.rowconfigure(1, weight=1)
+        self.formations_editor_scene.rowconfigure(0, weight=1)
 
-        formation_editor_header = tk.Frame(self.formations_editor_scene, bg=SURFACE)
+        editor_shell = tk.Frame(self.formations_editor_scene, bg=SURFACE)
+        editor_shell.grid(row=0, column=0, sticky="nsew")
+        editor_shell.columnconfigure(0, weight=1)
+        editor_shell.rowconfigure(0, weight=1)
+
+        self.formations_editor_canvas = tk.Canvas(editor_shell, bg=SURFACE, highlightthickness=0, bd=0)
+        self.formations_editor_canvas.grid(row=0, column=0, sticky="nsew")
+        formations_editor_scroll = ttk.Scrollbar(
+            editor_shell,
+            orient="vertical",
+            command=self.formations_editor_canvas.yview,
+        )
+        formations_editor_scroll.grid(row=0, column=1, sticky="ns")
+        self.formations_editor_canvas.configure(yscrollcommand=formations_editor_scroll.set)
+
+        self.formations_editor_content = tk.Frame(self.formations_editor_canvas, bg=SURFACE)
+        self.formations_editor_window = self.formations_editor_canvas.create_window(
+            (0, 0),
+            window=self.formations_editor_content,
+            anchor="nw",
+        )
+        self.formations_editor_content.bind(
+            "<Configure>",
+            lambda _event: self.formations_editor_canvas.configure(scrollregion=self.formations_editor_canvas.bbox("all")),
+        )
+        self.formations_editor_canvas.bind("<Configure>", self.on_formations_editor_canvas_configure)
+        self._bind_mousewheel(self.formations_editor_canvas, self.formations_editor_content)
+        self.formations_editor_content.columnconfigure(0, weight=1)
+
+        formation_editor_header = tk.Frame(self.formations_editor_content, bg=SURFACE)
         formation_editor_header.grid(row=0, column=0, sticky="ew", padx=20, pady=(20, 8))
         formation_editor_header.columnconfigure(1, weight=1)
 
@@ -104,25 +133,29 @@ class FormationsPanelMixin:
             justify="left",
         ).grid(row=1, column=1, sticky="w", pady=(4, 0))
 
-        self.formations_editor_body = tk.Frame(self.formations_editor_scene, bg=SURFACE)
+        self.formations_editor_body = tk.Frame(self.formations_editor_content, bg=SURFACE)
         self.formations_editor_body.grid(row=1, column=0, sticky="nsew", padx=16, pady=(0, 16))
         self.formations_editor_body.columnconfigure(0, weight=1)
-        self.formations_editor_body.rowconfigure(2, weight=1)
 
         self.formations_form_frame = tk.Frame(self.formations_editor_body, bg=SURFACE)
         self.formations_form_frame.grid(row=0, column=0, sticky="ew")
         self.formations_form_frame.columnconfigure(0, weight=1)
 
-        roster_scroll_wrap = tk.Frame(self.formations_editor_body, bg=SURFACE)
-        roster_scroll_wrap.grid(row=2, column=0, sticky="nsew", pady=(0, 0))
-        roster_scroll_wrap.columnconfigure(0, weight=1)
-        roster_scroll_wrap.rowconfigure(0, weight=1)
+        self.formations_roster_scroll_wrap = tk.Frame(self.formations_editor_body, bg=SURFACE)
+        self.formations_roster_scroll_wrap.grid(row=2, column=0, sticky="nsew", pady=(0, 0))
+        self.formations_roster_scroll_wrap.columnconfigure(0, weight=1)
+        self.formations_roster_scroll_wrap.rowconfigure(0, weight=1)
+        self.formations_roster_scroll_wrap.grid_propagate(False)
 
-        self.formations_roster_canvas = tk.Canvas(roster_scroll_wrap, bg=SURFACE, highlightthickness=0, bd=0)
+        self.formations_roster_canvas = tk.Canvas(self.formations_roster_scroll_wrap, bg=SURFACE, highlightthickness=0, bd=0)
         self.formations_roster_canvas.grid(row=0, column=0, sticky="nsew")
-        formations_roster_scroll = ttk.Scrollbar(roster_scroll_wrap, orient="vertical", command=self.formations_roster_canvas.yview)
-        formations_roster_scroll.grid(row=0, column=1, sticky="ns")
-        self.formations_roster_canvas.configure(yscrollcommand=formations_roster_scroll.set)
+        self.formations_roster_scroll = ttk.Scrollbar(
+            self.formations_roster_scroll_wrap,
+            orient="vertical",
+            command=self.formations_roster_canvas.yview,
+        )
+        self.formations_roster_scroll.grid(row=0, column=1, sticky="ns")
+        self.formations_roster_canvas.configure(yscrollcommand=self.formations_roster_scroll.set)
 
         self.formations_roster_frame = tk.Frame(self.formations_roster_canvas, bg=SURFACE)
         self.formations_roster_window = self.formations_roster_canvas.create_window((0, 0), window=self.formations_roster_frame, anchor="nw")
@@ -131,7 +164,7 @@ class FormationsPanelMixin:
             lambda _event: self.formations_roster_canvas.configure(scrollregion=self.formations_roster_canvas.bbox("all")),
         )
         self.formations_roster_canvas.bind("<Configure>", self.on_formations_roster_canvas_configure)
-        self._bind_mousewheel(self.formations_roster_canvas, self.formations_roster_frame)
+        self._bind_mousewheel(self.formations_roster_canvas, self.formations_roster_scroll_wrap, self.formations_roster_scroll, self.formations_roster_frame)
 
         self.show_formations_list_scene()
         self.render_formation_editor()
@@ -376,6 +409,8 @@ class FormationsPanelMixin:
             self._bind_mousewheel(self.formations_roster_canvas, card, icon_canvas, name_label, meta_label, info_label)
 
         self._render_roster_fill_spacer()
+        self._bind_formations_editor_mousewheel()
+        self._schedule_formations_roster_height_update()
 
     def get_roster_layout_metrics(self) -> tuple[int, int, int]:
         width = self.formations_roster_canvas.winfo_width()
@@ -420,6 +455,59 @@ class FormationsPanelMixin:
         self.formations_roster_spacer.grid(row=1, column=0, sticky="ew")
         self.formations_roster_spacer.grid_propagate(False)
         self.formations_roster_canvas.configure(scrollregion=self.formations_roster_canvas.bbox("all"))
+
+    def on_formations_editor_canvas_configure(self, event: tk.Event) -> None:
+        self.formations_editor_canvas.itemconfigure(self.formations_editor_window, width=event.width)
+        self._schedule_formations_roster_height_update()
+
+    def _schedule_formations_roster_height_update(self) -> None:
+        pending = getattr(self, "_formations_roster_height_after", None)
+        if pending is not None:
+            return
+        self._formations_roster_height_after = self.after_idle(self._update_formations_roster_height)
+
+    def _update_formations_roster_height(self) -> None:
+        self._formations_roster_height_after = None
+        if (
+            not self.formations_editor_canvas.winfo_exists()
+            or not self.formations_editor_content.winfo_exists()
+            or not self.formations_roster_scroll_wrap.winfo_exists()
+        ):
+            return
+
+        self.update_idletasks()
+        viewport_height = self.formations_editor_canvas.winfo_height()
+        if viewport_height <= 1:
+            return
+
+        total_height = self.formations_editor_content.winfo_reqheight()
+        roster_height = self.formations_roster_scroll_wrap.winfo_reqheight()
+        non_roster_height = max(0, total_height - roster_height)
+        target_height = max(260, viewport_height - non_roster_height - 12)
+        if int(self.formations_roster_scroll_wrap.cget("height")) != target_height:
+            self.formations_roster_scroll_wrap.configure(height=target_height)
+            self.formations_roster_canvas.configure(height=target_height)
+            self._render_roster_fill_spacer()
+
+    def _bind_formations_editor_mousewheel(self) -> None:
+        widgets: list[tk.Widget] = []
+        excluded_roots = {self.formations_roster_scroll_wrap}
+        canvas_name = str(self.formations_editor_canvas)
+
+        def collect(widget: tk.Widget) -> None:
+            if widget in excluded_roots:
+                return
+            bound_canvases = set(getattr(widget, "_mousewheel_bound_canvases", set()))
+            if canvas_name not in bound_canvases:
+                widgets.append(widget)
+                bound_canvases.add(canvas_name)
+                widget._mousewheel_bound_canvases = bound_canvases  # type: ignore[attr-defined]
+            for child in widget.winfo_children():
+                collect(child)
+
+        collect(self.formations_editor_content)
+        if widgets:
+            self._bind_mousewheel(self.formations_editor_canvas, *widgets)
 
     def show_formations_list_scene(self) -> None:
         self.formation_scene_var.set("list")
