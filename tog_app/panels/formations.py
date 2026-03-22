@@ -169,7 +169,16 @@ class FormationsPanelMixin:
         self.show_formations_list_scene()
         self.render_formation_editor()
 
-    def render_formation_editor(self) -> None:
+    def render_formation_editor(
+        self,
+        preserve_editor_scroll: bool = False,
+        reset_roster_scroll: bool = False,
+    ) -> None:
+        editor_scroll = 0.0
+        if preserve_editor_scroll and self.formations_editor_canvas.winfo_exists():
+            yview = self.formations_editor_canvas.yview()
+            if yview:
+                editor_scroll = yview[0]
         self.sync_active_team_slots()
         for child in self.formations_form_frame.winfo_children():
             child.destroy()
@@ -296,15 +305,35 @@ class FormationsPanelMixin:
 
         roster_filters = tk.Frame(roster_header, bg=SURFACE_MUTED)
         roster_filters.grid(row=0, column=1, sticky="e")
-        color_filter = ttk.Combobox(
-            roster_filters,
-            textvariable=self.formation_color_filter_var,
-            values=self.get_roster_color_filter_options(),
-            state="readonly",
-            width=12,
-        )
-        color_filter.grid(row=0, column=0, padx=(0, 8))
-        color_filter.bind("<<ComboboxSelected>>", self.on_roster_filter_changed)
+        color_filters = tk.Frame(roster_filters, bg=SURFACE_MUTED)
+        color_filters.grid(row=0, column=0, padx=(0, 8))
+        selected_color = canonical_color_value(self.formation_color_filter_var.get().strip())
+        color_codes = self.get_roster_color_filter_codes()
+        for index, color_code in enumerate(color_codes):
+            color_icon = self.get_color_icon_image(color_code, 18)
+            is_selected = selected_color == color_code
+            border_color = get_color_border(color_code) if is_selected else BORDER
+            button = tk.Button(
+                color_filters,
+                image=color_icon,
+                text="" if color_icon is not None else display_color_value(color_code),
+                command=lambda value=color_code: self.toggle_roster_color_filter(value),
+                bg=PRIMARY_SOFT if is_selected else SURFACE,
+                fg=TEXT,
+                activebackground=PRIMARY_SOFT if is_selected else SURFACE_MUTED,
+                activeforeground=TEXT,
+                relief="flat",
+                bd=0,
+                padx=6,
+                pady=6,
+                cursor="hand2",
+                highlightthickness=1,
+                highlightbackground=border_color,
+                highlightcolor=border_color,
+                compound="left",
+            )
+            button.grid(row=0, column=index, padx=(0, 6) if index < len(color_codes) - 1 else 0)
+            button.image = color_icon  # type: ignore[attr-defined]
         rarity_filter = ttk.Combobox(
             roster_filters,
             textvariable=self.formation_rarity_filter_var,
@@ -426,6 +455,12 @@ class FormationsPanelMixin:
         self._render_roster_fill_spacer()
         self._bind_formations_editor_mousewheel()
         self._schedule_formations_roster_height_update()
+        self.update_idletasks()
+        if preserve_editor_scroll and self.formations_editor_canvas.winfo_exists():
+            self.formations_editor_canvas.yview_moveto(editor_scroll)
+        if reset_roster_scroll and self.formations_roster_canvas.winfo_exists():
+            self.formations_roster_canvas.yview_moveto(0)
+            self.formations_roster_canvas.configure(scrollregion=self.formations_roster_canvas.bbox("all"))
 
     def get_roster_layout_metrics(self) -> tuple[int, int, int]:
         width = self.formations_roster_canvas.winfo_width()
@@ -1321,16 +1356,20 @@ class FormationsPanelMixin:
             return False
         return True
 
-    def get_roster_color_filter_options(self) -> tuple[str, ...]:
-        colors = sorted(
-            {
-                canonical_color_value(row.get("Color", ""))
-                for row in self.rows
-                if canonical_color_value(row.get("Color", ""))
-            },
-            key=lambda value: COLOR_ORDER.get(value, len(COLOR_ORDER)),
+    def get_roster_color_filter_codes(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                {
+                    canonical_color_value(row.get("Color", ""))
+                    for row in self.rows
+                    if canonical_color_value(row.get("Color", ""))
+                },
+                key=lambda value: COLOR_ORDER.get(value, len(COLOR_ORDER)),
+            )
         )
-        return ("All Colors", *(display_color_value(color) for color in colors))
+
+    def get_roster_color_filter_options(self) -> tuple[str, ...]:
+        return ("All Colors", *(display_color_value(color) for color in self.get_roster_color_filter_codes()))
 
     def get_roster_rarity_filter_options(self) -> tuple[str, ...]:
         rarities = sorted(
@@ -1339,8 +1378,19 @@ class FormationsPanelMixin:
         )
         return ("All Rarities", *rarities)
 
+    def toggle_roster_color_filter(self, color_value: str) -> None:
+        selected_color = canonical_color_value(self.formation_color_filter_var.get().strip())
+        if selected_color == canonical_color_value(color_value):
+            self.formation_color_filter_var.set("All Colors")
+        else:
+            self.formation_color_filter_var.set(display_color_value(color_value))
+        self.on_roster_filter_changed()
+
     def on_roster_filter_changed(self, _event: tk.Event | None = None) -> None:
-        self.render_formation_editor()
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            reset_roster_scroll=True,
+        )
 
     def clear_formation_slot(self, slot_key: str) -> None:
         current_value = self.formation_slot_keys.get(slot_key, "").strip()
@@ -1489,5 +1539,3 @@ class FormationsPanelMixin:
     def highlight_active_slot(self, active_slot: str | None) -> None:
         for slot_key, frame in self.formation_slot_frames.items():
             frame.configure(highlightbackground=PRIMARY if slot_key == active_slot else BORDER)
-
-
