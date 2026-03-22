@@ -199,7 +199,7 @@ class PacksPanelMixin:
         tk.Label(header, textvariable=self.pack_title_var, bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=1, sticky="w")
         tk.Label(
             header,
-            text="Choose items from the global item base catalog, search the catalog below, and compare the total pack value against the BRL price converted using 1 USD = 6.25 BRL.",
+            text="Choose items from the global item base catalog, search the catalog below, and compare the total pack value against the price.",
             bg=SURFACE,
             fg=TEXT_MUTED,
             font=self.body_font,
@@ -545,9 +545,9 @@ class PacksPanelMixin:
 
         title = tk.Label(card, text=pack_name, bg=bg, fg=TEXT, font=self.card_title_font, anchor="w")
         title.grid(row=0, column=0, sticky="w")
-        subtitle = tk.Label(card, text=f"{len(items)} line item(s) and {format_decimal(ratio, 0)} total value", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="w")
+        subtitle = tk.Label(card, text=f"{len(items)} line item(s) and calculated value of {format_decimal(ratio, 0)}", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="w")
         subtitle.grid(row=1, column=0, sticky="w", pady=(4, 0))
-        summary = tk.Label(card, text=f"Total Value: {format_decimal(total_value)}   Price: BRL {price_brl or '0'}   Total Value: {format_decimal(ratio, 0)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
+        summary = tk.Label(card, text=f"Suspendium Value: {format_decimal(total_value)}   Price: BRL {price_brl or '0'}   Value: {format_decimal(ratio, 0)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
         summary.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         preview_names = [str(item.get("item_name", "") or "").strip() for item in items[:4]]
         preview = tk.Label(card, text=", ".join(name for name in preview_names if name) or "No items", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)

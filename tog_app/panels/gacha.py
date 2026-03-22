@@ -428,7 +428,7 @@ class GachaPanelMixin:
             raise ValueError("Trials must be a positive whole number.")
         if copies_needed <= 0:
             raise ValueError("Target copies must be a positive whole number.")
-        if pity_limit <= 0:
+        if pity_limit < 0:
             raise ValueError("Pity pull must be a positive whole number.")
         if rate_percent < 0 or rate_percent > 100:
             raise ValueError("Base rate must be between 0 and 100 percent.")
@@ -481,8 +481,10 @@ class GachaPanelMixin:
             metrics = [
                 ("Average Pulls", format_decimal(float(summary["average_pulls"])), True),
                 ("Median Pulls", str(summary["median_pulls"]), False),
+                ("10th Percentile", str(summary["p10_pulls"]), False),
+                ("25th Percentile", str(summary["p25_pulls"]), False),
+                ("75th Percentile", str(summary["p75_pulls"]), False),
                 ("90th Percentile", str(summary["p90_pulls"]), False),
-                ("95th Percentile", str(summary["p95_pulls"]), False),
                 ("99th Percentile", str(summary["p99_pulls"]), False),
                 ("Best Case", str(summary["best_pulls"]), False),
                 ("Worst Case", str(summary["worst_pulls"]), False),
@@ -507,7 +509,7 @@ class GachaPanelMixin:
                 ("10th Percentile", str(summary["p10_copies"]), False),
                 ("25th Percentile", str(summary["p25_copies"]), False),
                 ("75th Percentile", str(summary["p75_copies"]), False),
-                ("90th Percentile", str(summary["p90_copies"]), False),
+                ("99th Percentile", str(summary["p99_copies"]), False),
                 ("Best Copies", str(summary["best_copies"]), False),
                 ("Worst Copies", str(summary["worst_copies"]), False),
             ]
