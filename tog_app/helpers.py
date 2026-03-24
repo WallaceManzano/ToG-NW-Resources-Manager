@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import re
 from urllib.parse import urlparse
@@ -16,6 +16,8 @@ from .constants import (
     L_DISPLAY_MAP,
     TEAM_OPTIONS,
     TEXT_MUTED,
+    TOWER_MODE_LABELS,
+    TOWER_TRACKED_MODES,
 )
 
 CHARACTER_FIELD_LABEL_ALIASES = {
@@ -36,6 +38,11 @@ L_VALUE_ALIASES = {
     "-": "",
 }
 
+TOWER_MODE_KEY_ALIASES = {
+    **{str(mode["key"]).casefold(): str(mode["key"]) for mode in TOWER_TRACKED_MODES},
+    **{str(mode["label"]).casefold(): str(mode["key"]) for mode in TOWER_TRACKED_MODES},
+}
+
 
 def normalize_team_name(value: str) -> str:
     return " ".join((value or "").strip().split()).casefold()
@@ -47,6 +54,20 @@ def normalize_character_name(value: str) -> str:
 
 def normalize_item_name(value: str) -> str:
     return " ".join((value or "").strip().split()).casefold()
+
+
+def canonical_tower_mode_key(value: str) -> str:
+    cleaned = " ".join((value or "").strip().split())
+    if not cleaned:
+        return ""
+    return TOWER_MODE_KEY_ALIASES.get(cleaned.casefold(), cleaned.casefold())
+
+
+def display_tower_mode_label(value: str) -> str:
+    canonical = canonical_tower_mode_key(value)
+    if not canonical:
+        return ""
+    return TOWER_MODE_LABELS.get(canonical, canonical.replace("_", " ").title())
 
 
 def canonical_character_field_label(value: str) -> str:
@@ -275,5 +296,3 @@ def box_center(box: tuple[int, int, int, int]) -> tuple[int, int]:
 def box_size(box: tuple[int, int, int, int]) -> tuple[int, int]:
     x1, y1, x2, y2 = box
     return max(1, x2 - x1), max(1, y2 - y1)
-
-

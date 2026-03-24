@@ -12,11 +12,11 @@ except ImportError:
 
 from .constants import *
 from .helpers import *
-from .panels import CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin
-from .repositories import CharacterRepository, FormationRepository, PackRepository
+from .panels import CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin, TowerProgressPanelMixin
+from .repositories import CharacterRepository, FormationRepository, PackRepository, TowerProgressRepository
 
 
-class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin, tk.Tk):
+class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanelMixin, PacksPanelMixin, TowerProgressPanelMixin, tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_TITLE)
@@ -30,11 +30,14 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.formation_repository = FormationRepository(self.formations_path)
         self.packs_path = DEFAULT_PACKS_PATH
         self.pack_repository = PackRepository(self.packs_path)
+        self.tower_progress_path = DEFAULT_TOWER_PROGRESS_PATH
+        self.tower_progress_repository = TowerProgressRepository(self.tower_progress_path)
         self.headers = list(DEFAULT_HEADERS)
         self.rows: list[dict[str, str]] = []
         self.formations: list[dict[str, object]] = []
         self.item_bases: list[dict[str, str]] = []
         self.packs: list[dict[str, object]] = []
+        self.tower_progress_entries: list[dict[str, object]] = []
         self.variables = {header: tk.StringVar() for header in self.headers}
         self.status_var = tk.StringVar(value="Loading character data...")
         self.summary_count_var = tk.StringVar(value="0 characters")
@@ -46,6 +49,10 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.pack_title_var = tk.StringVar(value="New Pack")
         self.item_base_title_var = tk.StringVar(value="New Item Base")
         self.item_base_summary_var = tk.StringVar(value="0 catalog items")
+        self.tower_progress_summary_var = tk.StringVar(value="0 snapshots across 0 towers")
+        self.tower_progress_title_var = tk.StringVar(value="New Tower Snapshot")
+        self.tower_progress_chart_caption_var = tk.StringVar(value="Save a snapshot to see tower evolution over time.")
+        self.tower_progress_latest_time_var = tk.StringVar(value="No snapshots saved yet.")
         self.team_name_var = tk.StringVar(value=TEAM_OPTIONS[0])
         self.formation_name_var = tk.StringVar()
         self.team_note_var = tk.StringVar()
@@ -76,15 +83,20 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.character_summary_r_filter_var = tk.StringVar(value=CHARACTER_SUMMARY_R_FILTER_OPTIONS[0])
         self.formation_color_filter_var = tk.StringVar(value="All Colors")
         self.formation_rarity_filter_var = tk.StringVar(value="All Rarities")
+        self.tower_progress_mode_filter_var = tk.StringVar(value=TOWER_MODE_FILTER_OPTIONS[0])
         self.selected_index: int | None = None
         self.selected_formation_index: int | None = None
         self.selected_pack_index: int | None = None
         self.selected_item_base_index: int | None = None
+        self.selected_tower_progress_index: int | None = None
         self.gacha_results: list[dict[str, int | bool]] = []
         self.gacha_summary: dict[str, float | int] = {}
         self.gacha_last_config: dict[str, object] | None = None
         self.editor_teams: dict[str, dict[str, str]] = empty_team_map()
         self.pack_editor_items: list[dict[str, str]] = []
+        self.tower_progress_captured_at_var = tk.StringVar(value=self.get_default_tower_progress_timestamp())
+        self.tower_progress_mode_vars = {str(mode["key"]): tk.StringVar() for mode in TOWER_TRACKED_MODES}
+        self.tower_progress_latest_floor_vars = {str(mode["key"]): tk.StringVar(value="-") for mode in TOWER_TRACKED_MODES}
         self.active_editor_team = TEAM_OPTIONS[0]
         self.preview_image = None
         self.summary_images: dict[str, tk.PhotoImage] = {}
@@ -124,6 +136,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.load_rows(select_index=None)
         self.load_formations(select_index=None)
         self.load_pack_data(select_index=None)
+        self.load_tower_progress_entries(select_index=None)
 
     def _setup_fonts(self) -> None:
         self.title_font = font.Font(family="Segoe UI Semibold", size=22)
@@ -178,15 +191,18 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.formations_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.packs_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.gacha_tab = tk.Frame(self.notebook, bg=BACKGROUND)
+        self.tower_progress_tab = tk.Frame(self.notebook, bg=BACKGROUND)
         self.notebook.add(self.characters_tab, text="Characters")
         self.notebook.add(self.formations_tab, text="Formations")
         self.notebook.add(self.packs_tab, text="Packs Value")
         self.notebook.add(self.gacha_tab, text="Gacha Simulation")
+        self.notebook.add(self.tower_progress_tab, text="Tower Progress")
         self.notebook.bind("<<NotebookTabChanged>>", self.on_tab_changed)
         self._build_characters_tab()
         self._build_formations_tab()
         self._build_packs_tab()
         self._build_gacha_tab()
+        self._build_tower_progress_tab()
 
         status_wrap = tk.Frame(self, bg=BACKGROUND, padx=24, pady=0)
         status_wrap.grid(row=2, column=0, sticky="ew", pady=(0, 18))
@@ -208,6 +224,8 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
             self.after_idle(self.refresh_pack_tab_visuals)
         elif selected_tab == str(self.gacha_tab):
             self.after_idle(self.refresh_gacha_tab_visuals)
+        elif selected_tab == str(self.tower_progress_tab):
+            self.after_idle(self.refresh_tower_progress_tab_visuals)
 
     def refresh_formation_tab_visuals(self) -> None:
         if self.formation_scene_var.get() == "list":
@@ -474,6 +492,10 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         if image is not None:
             self.level_star_images[star_key] = image
         return image
+
+
+
+
 
 
 

@@ -8,6 +8,7 @@ DB_DIR = BASE_DIR / "db"
 DEFAULT_CHARACTERS_PATH = DB_DIR / "characters.json"
 DEFAULT_FORMATIONS_PATH = DB_DIR / "formations.json"
 DEFAULT_PACKS_PATH = DB_DIR / "packs.json"
+DEFAULT_TOWER_PROGRESS_PATH = DB_DIR / "tower_progress.json"
 ICON_DIR = BASE_DIR / "imported_icons"
 ASSETS_DIR = BASE_DIR / "assets"
 ICON_RATIO_WIDTH = 200
@@ -122,7 +123,7 @@ CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS = ("All Colors", *CHARACTER_COLOR_OPTIONS
 CHARACTER_SUMMARY_L_FILTER_OPTIONS = (
     "All L Values",
     *(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "P", "R", "B", "G")),
-    'None',
+    "None",
 )
 CHARACTER_SUMMARY_R_FILTER_OPTIONS = ("All R Values", "0", "1", "2", "3", "4", "5", "6", "7", "8")
 CHARACTER_IW_TYPE_OPTIONS = (
@@ -155,4 +156,12 @@ FORMATION_SLOT_LABELS = {
     "back_1": "Back 1",
     "back_2": "Back 2",
 }
-
+TOWER_FILTER_ALL = "All Towers"
+TOWER_TRACKED_MODES = (
+    {"key": "adventure", "label": "Adventure", "accent": PRIMARY},
+    {"key": "hard_adventure", "label": "Hard Adventure", "accent": DANGER},
+)
+TOWER_MODE_KEYS = tuple(mode["key"] for mode in TOWER_TRACKED_MODES)
+TOWER_MODE_LABELS = {mode["key"]: mode["label"] for mode in TOWER_TRACKED_MODES}
+TOWER_MODE_ACCENTS = {mode["key"]: mode["accent"] for mode in TOWER_TRACKED_MODES}
+TOWER_MODE_FILTER_OPTIONS = (TOWER_FILTER_ALL, *(mode["label"] for mode in TOWER_TRACKED_MODES))

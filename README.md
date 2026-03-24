@@ -1,4 +1,4 @@
-# ToG Character Manager
+﻿# ToG Character Manager
 
 This is a for-fun Python desktop project for managing data from `Tower of God: New World`.
 
@@ -7,12 +7,14 @@ Its current goal is to help manage:
 - characters
 - formations
 - resources (`TODO`)
+- tower progress history
 
 ## What The App Does
 
-- Organizes the UI into `Characters` and `Formations` tabs
+- Organizes the UI into `Characters`, `Formations`, `Packs Value`, `Gacha Simulation`, and `Tower Progress` tabs
 - Stores character data in [characters.json](db/characters.json)
 - Stores formation data in [formations.json](db/formations.json)
+- Stores tower floor snapshots in [tower_progress.json](db/tower_progress.json)
 - Creates, reads, updates, and deletes characters
 - Imports character icons from `http` or `https` PNG or WebP URLs
 - Saves downloaded icons into `imported_icons/`
@@ -21,6 +23,7 @@ Its current goal is to help manage:
 - Creates, updates, and deletes formations
 - Opens formation editing in a dedicated scene
 - Lets each formation manage `Team 1` to `Team 5`
+- Records dated floor snapshots for tracked tower modes and charts their evolution over time
 - Lets you drag characters from the roster into formation slots
 - Shows saved formation previews with team member icons
 - Opens a popup with full character information from the formation roster
@@ -36,6 +39,7 @@ Its current goal is to help manage:
 - [tog_app/panels/formations.py](tog_app/panels/formations.py): Formations tab/panel logic
 - [characters.json](db/characters.json): character store
 - [formations.json](db/formations.json): formation store
+- [tower_progress.json](db/tower_progress.json): tower progress snapshot store
 - `assets/`: local visual assets
 - `imported_icons/`: downloaded icon files
 
@@ -80,3 +84,5 @@ py -m pip install Pillow
 5. Click `Create` for a new formation or `Update` for an existing one.
 
 The app validates formation rules when saving and keeps formations in `db/formations.json`.
+
+
