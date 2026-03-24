@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import re
 from urllib.parse import urlparse
@@ -257,4 +257,23 @@ def centered_ratio_box(
     x1 = (container_width - box_width) // 2
     y1 = (container_height - box_height) // 2
     return x1, y1, x1 + box_width, y1 + box_height
+
+
+def inset_box(box: tuple[int, int, int, int], inset: int) -> tuple[int, int, int, int]:
+    x1, y1, x2, y2 = box
+    max_inset_x = max(0, (x2 - x1 - 1) // 2)
+    max_inset_y = max(0, (y2 - y1 - 1) // 2)
+    safe_inset = max(0, min(inset, max_inset_x, max_inset_y))
+    return x1 + safe_inset, y1 + safe_inset, x2 - safe_inset, y2 - safe_inset
+
+
+def box_center(box: tuple[int, int, int, int]) -> tuple[int, int]:
+    x1, y1, x2, y2 = box
+    return (x1 + x2) // 2, (y1 + y2) // 2
+
+
+def box_size(box: tuple[int, int, int, int]) -> tuple[int, int]:
+    x1, y1, x2, y2 = box
+    return max(1, x2 - x1), max(1, y2 - y1)
+
 

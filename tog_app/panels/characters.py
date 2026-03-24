@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import hashlib
 import tkinter as tk
@@ -652,10 +652,13 @@ class CharactersPanelMixin:
         icon_shell.grid(row=0, column=0, rowspan=3, sticky="nw")
 
         summary_box = centered_ratio_box(SUMMARY_ICON_WIDTH, SUMMARY_ICON_HEIGHT, 4)
-        image = self.get_summary_image(row.get("Icon", ""))
+        image_box = inset_box(summary_box, 2)
+        image_width, image_height = box_size(image_box)
+        image_center_x, image_center_y = box_center(image_box)
+        image = self.get_summary_image(row.get("Icon", ""), image_width, image_height)
         if image is not None:
             icon_shell.create_rectangle(*summary_box, outline=border, fill=SURFACE)
-            icon_shell.create_image(SUMMARY_ICON_WIDTH // 2, SUMMARY_ICON_HEIGHT // 2, image=image)
+            icon_shell.create_image(image_center_x, image_center_y, image=image)
         else:
             icon_shell.create_rectangle(*summary_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
@@ -1110,8 +1113,9 @@ class CharactersPanelMixin:
         self.preview_image = None
         self.preview_holder.configure(highlightbackground=border, highlightcolor=border)
         preview_box = centered_ratio_box(PREVIEW_ICON_WIDTH, PREVIEW_ICON_HEIGHT, 8)
-        preview_center_x = PREVIEW_ICON_WIDTH // 2
-        preview_center_y = PREVIEW_ICON_HEIGHT // 2
+        image_box = inset_box(preview_box, 2)
+        image_width, image_height = box_size(image_box)
+        preview_center_x, preview_center_y = box_center(image_box)
 
         self.preview_holder.create_rectangle(*preview_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
@@ -1145,7 +1149,7 @@ class CharactersPanelMixin:
         if Image is not None and ImageTk is not None:
             try:
                 image = Image.open(icon_path)
-                image.thumbnail((PREVIEW_ICON_WIDTH - 16, PREVIEW_ICON_HEIGHT - 16))
+                image.thumbnail((image_width, image_height))
                 self.preview_image = ImageTk.PhotoImage(image)
                 self.preview_holder.create_image(preview_center_x, preview_center_y, image=self.preview_image)
                 return
@@ -1154,8 +1158,8 @@ class CharactersPanelMixin:
 
         try:
             tk_image = tk.PhotoImage(file=str(icon_path))
-            width_scale = max(1, tk_image.width() // max(1, PREVIEW_ICON_WIDTH - 16))
-            height_scale = max(1, tk_image.height() // max(1, PREVIEW_ICON_HEIGHT - 16))
+            width_scale = max(1, tk_image.width() // image_width)
+            height_scale = max(1, tk_image.height() // image_height)
             scale = max(width_scale, height_scale)
             self.preview_image = tk_image.subsample(scale, scale) if scale > 1 else tk_image
             self.preview_holder.create_image(preview_center_x, preview_center_y, image=self.preview_image)
@@ -1168,6 +1172,7 @@ class CharactersPanelMixin:
                 font=self.body_font,
                 justify="center",
             )
+
 
 
 

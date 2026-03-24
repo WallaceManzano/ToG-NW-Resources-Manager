@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -372,12 +372,15 @@ class FormationsPanelMixin:
 
             icon_canvas = tk.Canvas(card, width=68, height=88, bg=SURFACE, highlightthickness=0, bd=0)
             icon_canvas.grid(row=0, column=0, rowspan=3, sticky="nw")
-            image = self.get_summary_image(row.get("Icon", ""), 60, 80)
             preview_box = centered_ratio_box(68, 88, 4)
+            image_box = inset_box(preview_box, 2)
+            image_width, image_height = box_size(image_box)
+            image_center_x, image_center_y = box_center(image_box)
+            image = self.get_summary_image(row.get("Icon", ""), image_width, image_height)
             border = get_color_border(row.get("Color", ""))
             if image is not None:
                 icon_canvas.create_rectangle(*preview_box, outline=border, fill=SURFACE)
-                icon_canvas.create_image(34, 44, image=image)
+                icon_canvas.create_image(image_center_x, image_center_y, image=image)
             else:
                 icon_canvas.create_rectangle(*preview_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
 
@@ -590,10 +593,13 @@ class FormationsPanelMixin:
         icon_canvas.grid(row=0, column=0, rowspan=2, sticky="nw", padx=18, pady=18)
         border = get_color_border(row.get("Color", ""))
         preview_box = centered_ratio_box(PREVIEW_ICON_WIDTH, PREVIEW_ICON_HEIGHT, 8)
+        image_box = inset_box(preview_box, 2)
+        image_width, image_height = box_size(image_box)
+        image_center_x, image_center_y = box_center(image_box)
         icon_canvas.create_rectangle(*preview_box, outline=border, fill=PLACEHOLDER_FILL, width=1)
-        image = self.get_summary_image(row.get("Icon", ""), PREVIEW_ICON_WIDTH - 16, PREVIEW_ICON_HEIGHT - 16)
+        image = self.get_summary_image(row.get("Icon", ""), image_width, image_height)
         if image is not None:
-            icon_canvas.create_image(PREVIEW_ICON_WIDTH // 2, PREVIEW_ICON_HEIGHT // 2, image=image)
+            icon_canvas.create_image(image_center_x, image_center_y, image=image)
             icon_canvas.image = image  # type: ignore[attr-defined]
 
         tk.Label(shell, text=row.get("Name", "") or "Unnamed Character", bg=SURFACE, fg=TEXT, font=self.section_font).grid(row=0, column=1, sticky="w", padx=(0, 18), pady=(18, 4))
@@ -758,21 +764,18 @@ class FormationsPanelMixin:
         character_row = self.find_character_row(slot_value)
         border = get_color_border(character_row.get("Color", "") if character_row else "")
         slot_box = centered_ratio_box(52, 68, 4)
-        image = self.get_summary_image(character_row.get("Icon", "") if character_row else "", 44, 60)
+        image_box = inset_box(slot_box, 2)
+        image_width, image_height = box_size(image_box)
+        image_center_x, image_center_y = box_center(image_box)
+        image = self.get_summary_image(character_row.get("Icon", "") if character_row else "", image_width, image_height)
         icon_canvas.create_rectangle(*slot_box, outline=border, fill=SURFACE if image is not None else PLACEHOLDER_FILL, width=1)
         if image is not None:
-            icon_canvas.create_image(26, 34, image=image)
+            icon_canvas.create_image(image_center_x, image_center_y, image=image)
             self.formation_slot_images[slot_key] = image
         else:
             self.formation_slot_images.pop(slot_key, None)
             if not slot_value:
-                icon_canvas.create_text(
-                    26,
-                    34,
-                    text="+",
-                    fill=TEXT_MUTED,
-                    font=self.section_font,
-                )
+                icon_canvas.create_text(image_center_x, image_center_y, text="+", fill=TEXT_MUTED, font=self.section_font)
 
         for widget in (slot, icon_canvas, value_label):
             widget.bind("<Button-1>", lambda _event, current_slot=slot_key: self.on_slot_clicked(current_slot))
@@ -953,8 +956,11 @@ class FormationsPanelMixin:
                     member_icon.grid(row=0, column=member_index, sticky="ew", padx=(0, 6) if member_index < len(members) - 1 else (0, 0))
                     preview_widgets.append(member_icon)
                     box = centered_ratio_box(24, 32, 2)
+                    image_box = inset_box(box, 1)
+                    image_width, image_height = box_size(image_box)
+                    image_center_x, image_center_y = box_center(image_box)
                     border = get_color_border(member_row.get("Color", "") if member_row else "")
-                    image = self.get_summary_image(member_row.get("Icon", "") if member_row else "", 20, 28)
+                    image = self.get_summary_image(member_row.get("Icon", "") if member_row else "", image_width, image_height)
                     member_icon.create_rectangle(
                         *box,
                         outline=border,
@@ -964,9 +970,9 @@ class FormationsPanelMixin:
                     if image is not None:
                         self.formation_preview_images.append(image)
                         member_icon.image = image  # type: ignore[attr-defined]
-                        member_icon.create_image(12, 16, image=image)
+                        member_icon.create_image(image_center_x, image_center_y, image=image)
                     else:
-                        member_icon.create_text(12, 16, text="+", fill=TEXT_MUTED, font=self.card_meta_font)
+                        member_icon.create_text(image_center_x, image_center_y, text="+", fill=TEXT_MUTED, font=self.card_meta_font)
 
                 note_text = team_notes.get(team_name, "")
                 if note_text:
@@ -1539,3 +1545,4 @@ class FormationsPanelMixin:
     def highlight_active_slot(self, active_slot: str | None) -> None:
         for slot_key, frame in self.formation_slot_frames.items():
             frame.configure(highlightbackground=PRIMARY if slot_key == active_slot else BORDER)
+
