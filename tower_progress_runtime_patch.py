@@ -289,19 +289,44 @@ def apply_runtime_patches() -> None:
         if not keep_status:
             self.status_var.set("Tower progress form cleared. Ready for a new snapshot.")
 
-    def prepare_tower_progress_entry_for_save(self, captured_at_override: str | None = None) -> dict[str, object]:
+    def get_tower_progress_fallback_floors(self, source_index: int | None = None) -> dict[str, int]:
+        candidate_entry: dict[str, object] | None = None
+        if source_index is not None and 0 <= source_index < len(self.tower_progress_entries):
+            candidate_entry = self.tower_progress_entries[source_index]
+        elif self.tower_progress_entries:
+            candidate_entry = max(self.tower_progress_entries, key=self.get_tower_progress_sort_key)
+
+        if candidate_entry is None:
+            return {}
+
+        floors = candidate_entry.get("floors", {}) if isinstance(candidate_entry.get("floors", {}), dict) else {}
+        fallback_floors: dict[str, int] = {}
+        for mode in TOWER_TRACKED_MODES:
+            mode_key = str(mode["key"])
+            fallback_floors[mode_key] = parse_int(str(floors.get(mode_key, 0) or "0"))
+        return fallback_floors
+
+    def prepare_tower_progress_entry_for_save(
+        self,
+        captured_at_override: str | None = None,
+        fallback_floors: dict[str, int] | None = None,
+    ) -> dict[str, object]:
         payload = self.collect_tower_progress_data()
         floors_source = payload.get("floors", {}) if isinstance(payload.get("floors", {}), dict) else {}
         normalized_floors: dict[str, int] = {}
+        fallback_floors = fallback_floors or {}
         for mode in TOWER_TRACKED_MODES:
             mode_key = str(mode["key"])
             floor_raw = str(floors_source.get(mode_key, "") or "").strip()
             if floor_raw == "":
-                raise ValueError(f"{display_tower_mode_label(mode_key)} floor is required.")
-            try:
-                floor_value = int(floor_raw)
-            except ValueError as exc:
-                raise ValueError(f"{display_tower_mode_label(mode_key)} floor must be a whole number.") from exc
+                if mode_key not in fallback_floors:
+                    raise ValueError(f"{display_tower_mode_label(mode_key)} floor is required for the first snapshot.")
+                floor_value = int(fallback_floors[mode_key])
+            else:
+                try:
+                    floor_value = int(floor_raw)
+                except ValueError as exc:
+                    raise ValueError(f"{display_tower_mode_label(mode_key)} floor must be a whole number.") from exc
             if floor_value < 0:
                 raise ValueError(f"{display_tower_mode_label(mode_key)} floor cannot be negative.")
             normalized_floors[mode_key] = floor_value
@@ -318,7 +343,8 @@ def apply_runtime_patches() -> None:
     def create_tower_progress_entry(self) -> None:
         previous_entries = self.clone_tower_progress_entries()
         try:
-            entry = self.prepare_tower_progress_entry_for_save()
+            fallback_floors = self.get_tower_progress_fallback_floors()
+            entry = self.prepare_tower_progress_entry_for_save(fallback_floors=fallback_floors)
             self.tower_progress_entries.append(entry)
             self.save_tower_progress_entries()
         except Exception as exc:
@@ -327,9 +353,8 @@ def apply_runtime_patches() -> None:
             self.status_var.set("Unable to save tower snapshot.")
             return
 
-        new_index = self.tower_progress_entries.index(entry)
-        self.select_tower_progress_entry(new_index)
-        self.status_var.set(f"Saved tower snapshot for {self.format_tower_progress_timestamp(str(entry.get('captured_at', '') or ''))}.")
+        self.clear_tower_progress_form(keep_status=True)
+        self.status_var.set(f"Saved tower snapshot for {self.format_tower_progress_timestamp(str(entry.get('captured_at', '') or ''))}. Ready for a new snapshot.")
 
     def update_tower_progress_entry(self) -> None:
         if self.selected_tower_progress_index is None:
@@ -340,7 +365,11 @@ def apply_runtime_patches() -> None:
         index = self.selected_tower_progress_index
         existing_entry = self.tower_progress_entries[index]
         try:
-            entry = self.prepare_tower_progress_entry_for_save(str(existing_entry.get("captured_at", "") or ""))
+            fallback_floors = self.get_tower_progress_fallback_floors(source_index=index)
+            entry = self.prepare_tower_progress_entry_for_save(
+                str(existing_entry.get("captured_at", "") or ""),
+                fallback_floors=fallback_floors,
+            )
             self.tower_progress_entries[index] = entry
             self.save_tower_progress_entries()
         except Exception as exc:
@@ -349,9 +378,8 @@ def apply_runtime_patches() -> None:
             self.status_var.set("Unable to update tower snapshot.")
             return
 
-        updated_index = self.tower_progress_entries.index(entry)
-        self.select_tower_progress_entry(updated_index)
-        self.status_var.set("Updated tower snapshot.")
+        self.clear_tower_progress_form(keep_status=True)
+        self.status_var.set("Updated tower snapshot. Ready for a new snapshot.")
 
     def save_tower_progress_entries(self) -> None:
         self.sort_tower_progress_entries()
@@ -481,6 +509,10 @@ def apply_runtime_patches() -> None:
                 )
 
         all_points = [point for points in series.values() for point in points]
+        snapshot_datetimes: list[datetime] = []
+        if visible_mode_keys:
+            snapshot_datetimes = [point["dt"] for point in series.get(visible_mode_keys[0], [])]
+        snapshot_datetimes = list(dict.fromkeys(snapshot_datetimes))
         if not all_points:
             return {
                 "state": "empty",
@@ -497,7 +529,7 @@ def apply_runtime_patches() -> None:
             delta_text = f"{delta:+d}" if delta != 0 else "0"
             caption = f"{display_tower_mode_label(active_mode_key)} across {len(active_points)} snapshot(s): floor {first_floor} to {last_floor} ({delta_text})."
         else:
-            caption = f"Showing {', '.join(display_tower_mode_label(mode_key) for mode_key in visible_mode_keys)} across {len(all_points)} point(s)."
+            caption = f"Showing {', '.join(display_tower_mode_label(mode_key) for mode_key in visible_mode_keys)} across {len(snapshot_datetimes)} snapshot(s)."
 
         try:
             import matplotlib
@@ -531,9 +563,9 @@ def apply_runtime_patches() -> None:
         if min_dt == max_dt:
             ax.set_xlim(min_dt - timedelta(hours=12), max_dt + timedelta(hours=12))
 
-        locator = mdates.AutoDateLocator(minticks=3, maxticks=6)
-        ax.xaxis.set_major_locator(locator)
-        ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+        if snapshot_datetimes:
+            ax.set_xticks(snapshot_datetimes)
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%d/%m\n%H:%M"))
 
         for mode_key in visible_mode_keys:
             points = series.get(mode_key, [])
@@ -617,6 +649,7 @@ def apply_runtime_patches() -> None:
     TowerProgressPanelMixin.on_tower_progress_filter_changed = on_tower_progress_filter_changed
     TowerProgressPanelMixin.select_tower_progress_entry = select_tower_progress_entry
     TowerProgressPanelMixin.clear_tower_progress_form = clear_tower_progress_form
+    TowerProgressPanelMixin.get_tower_progress_fallback_floors = get_tower_progress_fallback_floors
     TowerProgressPanelMixin.prepare_tower_progress_entry_for_save = prepare_tower_progress_entry_for_save
     TowerProgressPanelMixin.create_tower_progress_entry = create_tower_progress_entry
     TowerProgressPanelMixin.update_tower_progress_entry = update_tower_progress_entry
@@ -631,4 +664,8 @@ def apply_runtime_patches() -> None:
     TowerProgressPanelMixin.draw_tower_progress_chart = draw_tower_progress_chart
 
     _PATCHED = True
+
+
+
+
 
