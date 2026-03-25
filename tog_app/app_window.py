@@ -173,7 +173,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         title_wrap.grid(row=0, column=0, sticky="w")
         tk.Label(
             title_wrap,
-            text="Tower of God Resources Manager",
+            text="Tower of God: New World Account Manager",
             bg=PRIMARY,
             fg="white",
             font=self.title_font,

@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-APP_TITLE = "ToG Resources Manager"
+APP_TITLE = "Tower of God: New World Account Manager"
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_DIR = BASE_DIR / "db"
 DEFAULT_CHARACTERS_PATH = DB_DIR / "characters.json"

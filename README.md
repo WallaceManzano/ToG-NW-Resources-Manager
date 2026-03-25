@@ -1,52 +1,141 @@
-﻿# ToG Character Manager
+# Tower of God: New World Account Manager
 
-This is a for-fun Python desktop project for managing data from `Tower of God: New World`.
+`Tower of God: New World Account Manager` is a desktop app built with Python and Tkinter for tracking multiple `Tower of God: New World` resources in one place.
 
-Its current goal is to help manage:
+It currently combines five tools in a single UI:
 
-- characters
-- formations
-- resources (`TODO`)
-- tower progress history
+- character collection management
+- multi-team formation building
+- pack value analysis
+- gacha Monte Carlo simulation
+- tower progress history tracking
 
-## What The App Does
+## Main Features
 
-- Organizes the UI into `Characters`, `Formations`, `Packs Value`, `Gacha Simulation`, and `Tower Progress` tabs
-- Stores character data in [characters.json](db/characters.json)
-- Stores formation data in [formations.json](db/formations.json)
-- Stores tower floor snapshots in [tower_progress.json](db/tower_progress.json)
-- Creates, reads, updates, and deletes characters
-- Imports character icons from `http` or `https` PNG or WebP URLs
-- Saves downloaded icons into `imported_icons/`
-- Shows character summary cards with icon, rarity, color, stars, and stats
-- Supports sorting characters by `LB`, `Rarity`, or `Color`
-- Creates, updates, and deletes formations
-- Opens formation editing in a dedicated scene
-- Lets each formation manage `Team 1` to `Team 5`
-- Records dated floor snapshots for tracked tower modes and charts their evolution over time
-- Lets you drag characters from the roster into formation slots
-- Shows saved formation previews with team member icons
-- Opens a popup with full character information from the formation roster
+### Characters
+
+- Create, update, and delete character entries
+- Store character data in `db/characters.json`
+- Track icon, rarity, color, name, `L`, `B`, `Revolution`, `EE`, `Rapport`, gear slots, and IW fields
+- Import character icons directly from `http` or `https` PNG/WebP URLs
+- Save imported icons into `imported_icons/`
+- Preview imported or local icons inside the editor
+- Show character summary cards with icon, rarity, color, stars, IW info, and quick stats
+- Sort the roster by `LB`, `Rarity`, or `Color`
+- Filter the summary by rarity, color, `L`, and `Revolution`
+- Normalize character color and `L` values for storage/display
+- Prevent deleting a character that is still used in a formation
+- Automatically update formation references when a character version is edited
+
+### Formations
+
+- Create, update, and delete saved formations
+- Store formations in `db/formations.json`
+- Use a dedicated editor scene separate from the saved formations list
+- Give each formation up to five teams: `Team 1` through `Team 5`
+- Save team-specific notes for each team
+- Build formations on a 5-slot board: `Front 1`, `Front 2`, `Front 3`, `Back 1`, `Back 2`
+- Drag characters from the roster into formation slots
+- Click occupied slots to move, swap, or clear characters
+- Filter the roster by color and rarity while editing
+- Show saved formation previews with team member icons
+- Open a popup with the full character sheet from roster cards
+- Validate that:
+  - the formation name is unique
+  - every assigned character exists in the Characters tab
+  - a team cannot contain duplicate characters
+  - a character cannot appear in more than one team inside the same formation
+  - at least one character is assigned before saving
+
+### Packs Value
+
+- Create, update, and delete saved packs
+- Store pack data and shared item-base data in `db/packs.json`
+- Maintain a shared item-base catalog used by every pack
+- Create, update, and delete item-base entries with:
+  - item name
+  - priority
+  - base value
+  - computed item value
+- Search the shared item catalog from both the pack editor and the item-base manager
+- Add catalog items to a pack from the catalog view
+- Increase the amount automatically when adding the same item again
+- Edit item quantities directly in the pack editor
+- Remove items from a pack
+- Calculate pack metrics live:
+  - total pack value
+  - price converted from BRL to USD
+  - value per USD
+- Sort pack cards by their computed value efficiency
+- Prevent deleting an item-base entry while it is still used by any pack
+- Rename item-base references across packs when an item-base name changes
+
+### Gacha Simulation
+
+- Run Monte Carlo simulations from the `Gacha Simulation` tab
+- Configure:
+  - simulation mode
+  - number of trials
+  - target copies
+  - base rate
+  - pity pull limit
+  - hard pity on/off
+  - available pulls for budget mode
+- Support two simulation modes:
+  - `Fixed Pull Budget`
+  - `Pull Until Maxed`
+- Run the simulation on a background thread so the UI stays responsive
+- Summarize results with averages, medians, percentiles, and best/worst outcomes
+- Show success chance in fixed-budget mode
+- Render a histogram for either pull cost or copies obtained
+- Mark mean and median on the histogram
+- Clear results without leaving the tab
+
+### Tower Progress
+
+- Create, update, and delete dated tower snapshots
+- Store tower progress in `db/tower_progress.json`
+- Track floor history for:
+  - `Adventure`
+  - `Hard Adventure`
+- Accept timestamps in ISO format or local-style `dd/mm/yyyy` inputs
+- Keep a chronological snapshot history
+- Filter the history and chart by tower mode
+- Show delta changes versus the previous snapshot in the history list
+- Show the latest recorded floors in a quick summary card
+- Draw a time-series chart of tower evolution over time
+- Highlight the selected snapshot in the chart/history flow
+
+## Data Files
+
+- `db/characters.json`: character roster
+- `db/formations.json`: saved formations and all team assignments
+- `db/packs.json`: shared item-base catalog and saved packs
+- `db/tower_progress.json`: saved tower snapshots
+- `imported_icons/`: downloaded character icons
+- `assets/`: local color/star assets used by the UI
+
+The repositories auto-create missing JSON files on first load.
 
 ## Project Structure
 
-- [app.py](app.py): small launcher
-- [tog_app/app_window.py](tog_app/app_window.py): main app window
-- [tog_app/constants.py](tog_app/constants.py): shared constants
-- [tog_app/helpers.py](tog_app/helpers.py): shared helper functions
-- [tog_app/repositories.py](tog_app/repositories.py): JSON persistence
-- [tog_app/panels/characters.py](tog_app/panels/characters.py): Characters tab/panel logic
-- [tog_app/panels/formations.py](tog_app/panels/formations.py): Formations tab/panel logic
-- [characters.json](db/characters.json): character store
-- [formations.json](db/formations.json): formation store
-- [tower_progress.json](db/tower_progress.json): tower progress snapshot store
-- `assets/`: local visual assets
-- `imported_icons/`: downloaded icon files
+- `app.py`: launcher
+- `tower_progress_runtime_patch.py`: runtime patch entry used before app startup
+- `tog_app/app_window.py`: main Tk application shell and tab wiring
+- `tog_app/constants.py`: shared constants, UI colors, options, and file paths
+- `tog_app/helpers.py`: normalization, parsing, and display helpers
+- `tog_app/repositories.py`: JSON persistence layer
+- `tog_app/mcsim.py`: gacha simulation engine
+- `tog_app/panels/characters.py`: Characters tab
+- `tog_app/panels/formations.py`: Formations tab
+- `tog_app/panels/packs.py`: Packs Value tab
+- `tog_app/panels/gacha.py`: Gacha Simulation tab
+- `tog_app/panels/tower_progress.py`: Tower Progress tab
 
 ## Run
 
-1. Install Python 3.11+ for Windows.
-2. Open PowerShell in `C:\ToG`.
+1. Install Python 3.11+ on Windows.
+2. Open PowerShell in `C:\Dev\ToG`.
 3. Run:
 
 ```powershell
@@ -61,28 +150,40 @@ python app.py
 
 ## Optional Pillow Support
 
-The app works without extra packages. If you want smoother image scaling and reliable WebP previews, install Pillow:
+The app works without extra packages, but Pillow improves image loading/scaling, especially for imported WebP icons.
 
 ```powershell
 py -m pip install Pillow
 ```
 
-## How Icon Import Works
+## Typical Workflows
 
-1. Paste an image URL into the `Icon` field.
-2. Click `Import Image URL`.
-3. The app accepts `image/png` and `image/webp` responses and downloads the file into `imported_icons/` with the matching extension.
-4. The `Icon` field is replaced with the saved relative path.
-5. Click `Create` or `Update` to save the character.
+### Import a Character Icon
 
-## How Formations Work
+1. Open the `Characters` tab.
+2. Paste a PNG or WebP image URL into the `Icon` field.
+3. Click `Import Image URL`.
+4. Save the character with `Create` or `Update`.
+
+### Build a Formation
 
 1. Open the `Formations` tab.
-2. Click `New Formation` or open an existing saved formation.
-3. Choose the team you want to edit from `Team 1` to `Team 5`.
+2. Click `New Formation`.
+3. Choose the team to edit from `Team 1` to `Team 5`.
 4. Drag characters from the roster into the board slots.
-5. Click `Create` for a new formation or `Update` for an existing one.
+5. Save with `Create` or `Update`.
 
-The app validates formation rules when saving and keeps formations in `db/formations.json`.
+### Evaluate a Pack
 
+1. Open `Packs Value`.
+2. Use `Manage Item Base` to create shared catalog items if needed.
+3. Create a new pack and enter the BRL price.
+4. Add items from the catalog and adjust their amounts.
+5. Review total value, USD conversion, and value-per-USD before saving.
 
+### Track Tower Progress
+
+1. Open `Tower Progress`.
+2. Enter a capture date/time and the floors for each tracked mode.
+3. Save the snapshot.
+4. Use the history cards and chart to compare progress over time.
