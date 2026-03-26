@@ -716,15 +716,7 @@ def apply_runtime_patches() -> None:
                         list_actions = child
                         break
 
-        if list_actions is not None:
-            existing = [str(widget.cget("text")) for widget in list_actions.winfo_children() if isinstance(widget, tk.Button)]
-            if "Lootbox Value" not in existing:
-                self._make_button(
-                    list_actions,
-                    "Lootbox Value",
-                    self.open_lootbox_calculator,
-                    filled=False,
-                ).pack(side="left", padx=(8, 0))
+        return
 
     def render_pack_editor(self) -> None:
         original_render_pack_editor(self)
@@ -739,36 +731,79 @@ def apply_runtime_patches() -> None:
         if header is None or not header.winfo_exists():
             return
 
-        existing = [str(widget.cget("text")) for widget in header.winfo_children() if isinstance(widget, tk.Button)]
-        if "Lootbox Value" in existing:
-            return
-
-        self._make_button(
-            header,
-            "Lootbox Value",
-            self.open_lootbox_calculator,
-            filled=False,
-        ).grid(row=0, column=3, rowspan=2, sticky="e", padx=(8, 0))
+        return
 
     def render_item_base_manager(self) -> None:
         original_render_item_base_manager(self)
         self._ensure_lootbox_state()
+        shell = getattr(self, "item_base_manager_shell", None)
         form_frame = getattr(self, "item_base_manager_form", None)
-        if form_frame is None or not form_frame.winfo_exists():
+        if shell is None or not shell.winfo_exists() or form_frame is None or not form_frame.winfo_exists():
             return
+
+        header = None
+        for child in shell.winfo_children():
+            if isinstance(child, tk.Frame) and int(child.grid_info().get("row", -1)) == 0:
+                header = child
+                break
+        if header is not None and header.winfo_exists():
+            for child in list(header.winfo_children()):
+                if int(child.grid_info().get("column", -1)) == 1:
+                    child.destroy()
+            header_actions = tk.Frame(header, bg=SURFACE)
+            header_actions.grid(row=0, column=1, rowspan=2, sticky="e")
+            self._make_button(header_actions, "New Item", self.clear_item_base_form, filled=False).pack(side="left")
+            self._make_button(header_actions, "New Lootbox", self.open_new_lootbox_draft, filled=False).pack(side="left", padx=(8, 0))
+            self._make_button(header_actions, "Close", self.close_item_base_manager, filled=False).pack(side="left", padx=(8, 0))
+
         if self.selected_item_base_index is None or not (0 <= self.selected_item_base_index < len(self.item_bases)):
+            summary_card = None
+            children = form_frame.winfo_children()
+            if children:
+                summary_card = children[0]
+            if summary_card is not None and summary_card.winfo_exists():
+                for child in summary_card.winfo_children():
+                    if isinstance(child, tk.Frame) and int(child.grid_info().get("row", -1)) == 5:
+                        for widget in list(child.winfo_children()):
+                            if isinstance(widget, tk.Button) and str(widget.cget("text")) == "New":
+                                widget.destroy()
             return
 
         selected_item_base = self.item_bases[self.selected_item_base_index]
-        if not _is_lootbox_item_base(selected_item_base):
-            return
-
         summary_card = None
         children = form_frame.winfo_children()
         if children:
             summary_card = children[0]
         if summary_card is None or not summary_card.winfo_exists():
             return
+
+        actions = None
+        for child in summary_card.winfo_children():
+            if isinstance(child, tk.Frame) and int(child.grid_info().get("row", -1)) == 5:
+                actions = child
+                break
+        if actions is not None:
+            for widget in list(actions.winfo_children()):
+                if isinstance(widget, tk.Button) and str(widget.cget("text")) == "New":
+                    widget.destroy()
+
+        if not _is_lootbox_item_base(selected_item_base):
+            return
+
+        fields_row = None
+        for child in summary_card.winfo_children():
+            if isinstance(child, tk.Frame) and int(child.grid_info().get("row", -1)) == 3:
+                fields_row = child
+                break
+        if fields_row is not None:
+            for field in fields_row.winfo_children():
+                for widget in field.winfo_children():
+                    if isinstance(widget, tk.Entry):
+                        widget.configure(
+                            state="disabled",
+                            disabledbackground=SURFACE_MUTED,
+                            disabledforeground=TEXT_MUTED,
+                        )
 
         info_label = tk.Label(
             summary_card,
@@ -781,17 +816,16 @@ def apply_runtime_patches() -> None:
         )
         info_label.grid(row=6, column=0, sticky="w", padx=10, pady=(12, 0))
 
-        actions = None
-        for child in summary_card.winfo_children():
-            if isinstance(child, tk.Frame) and int(child.grid_info().get("row", -1)) == 5:
-                actions = child
-                break
         if actions is None:
             return
 
+        for widget in list(actions.winfo_children()):
+            if isinstance(widget, tk.Button) and str(widget.cget("text")) == "Update":
+                widget.destroy()
+
         existing = [str(widget.cget("text")) for widget in actions.winfo_children() if isinstance(widget, tk.Button)]
         if "Edit Lootbox" not in existing:
-            self._make_button(actions, "Edit Lootbox", self.edit_selected_lootbox_item_base, filled=False).pack(side="left", padx=(8, 0))
+            self._make_button(actions, "Edit Lootbox", self.edit_selected_lootbox_item_base, filled=True).pack(side="left", padx=(8, 0))
 
     def clone_lootbox_items(self, items: object) -> list[dict[str, str]]:
         if not isinstance(items, list):
@@ -880,6 +914,11 @@ def apply_runtime_patches() -> None:
         self.update_lootbox_metrics()
         self.render_lootbox_calculator()
         self.status_var.set("Removed the lootbox item row.")
+
+    def open_new_lootbox_draft(self) -> None:
+        self.clear_lootbox_form(keep_status=True, rerender=False)
+        self.open_lootbox_calculator()
+        self.status_var.set("Creating a new lootbox.")
 
     def edit_selected_lootbox_item_base(self) -> None:
         self._ensure_lootbox_state()
@@ -1879,6 +1918,7 @@ def apply_runtime_patches() -> None:
     PacksPanelMixin.clear_lootbox_form = clear_lootbox_form
     PacksPanelMixin.add_lootbox_item = add_lootbox_item
     PacksPanelMixin.remove_lootbox_item = remove_lootbox_item
+    PacksPanelMixin.open_new_lootbox_draft = open_new_lootbox_draft
     PacksPanelMixin.edit_selected_lootbox_item_base = edit_selected_lootbox_item_base
     PacksPanelMixin.open_lootbox_calculator = open_lootbox_calculator
     PacksPanelMixin.close_lootbox_calculator = close_lootbox_calculator
