@@ -62,13 +62,26 @@ It currently combines five tools in a single UI:
 - Increase the amount automatically when adding the same item again
 - Edit item quantities directly in the pack editor
 - Remove items from a pack
+- Create lootbox-backed item-base entries from the `New Lootbox` flow in `Global Item Base`
+- Build lootboxes from shared item-base entries with:
+  - selected item-base item
+  - drop probability
+  - drop amount
+  - live expected-value calculation
+- Save a lootbox expected value as an item-base entry
+- Reopen stored lootboxes from `Global Item Base` with `Edit Lootbox`
+- Update stored lootbox items, amounts, and probabilities
+- Recalculate lootbox-backed item-base values automatically when their source item-base values change
+- Use lootbox-backed item-base entries inside normal packs just like any other catalog item
 - Calculate pack metrics live:
   - total pack value
   - price converted from BRL to USD
   - value per USD
 - Sort pack cards by their computed value efficiency
 - Prevent deleting an item-base entry while it is still used by any pack
+- Prevent deleting an item-base entry while it is still used by a stored lootbox definition
 - Rename item-base references across packs when an item-base name changes
+- Rename item-base references inside stored lootbox definitions when an item-base name changes
 
 ### Gacha Simulation
 
@@ -180,6 +193,15 @@ py -m pip install Pillow
 3. Create a new pack and enter the BRL price.
 4. Add items from the catalog and adjust their amounts.
 5. Review total value, USD conversion, and value-per-USD before saving.
+
+### Create or Edit a Lootbox
+
+1. Open `Packs Value`.
+2. Click `Manage Item Base`.
+3. Use `New Lootbox` in the header to create a new lootbox, or select a lootbox-backed item base and click `Edit Lootbox`.
+4. Add lootbox rows using shared item-base entries, then set the drop probability and item amount for each row.
+5. Save the lootbox as an item-base entry or update the existing lootbox-backed item base.
+6. Reuse that lootbox item base inside normal packs.
 
 ### Track Tower Progress
 
