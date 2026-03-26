@@ -69,6 +69,7 @@ L_DISPLAY_MAP = {
     "RB": "Rainbow",
     "O": "Orange",
     "R": "Red",
+    "P": "Purple",
     "B": "Blue",
     "G": "Green",
 }
@@ -117,12 +118,12 @@ COLOR_ICON_ASSET_PATHS = {
 }
 CHARACTER_RARITY_OPTIONS = ("EX", "SSR+", "XSR+", "SSR")
 CHARACTER_COLOR_OPTIONS = tuple(COLOR_DISPLAY_MAP[code] for code in ("R", "G", "B", "Y", "D"))
-CHARACTER_L_OPTIONS = tuple(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "P", "R", "B", "G")) + ("",)
+CHARACTER_L_OPTIONS = tuple(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "R", "P", "B", "G")) + ("",)
 CHARACTER_SUMMARY_RARITY_FILTER_OPTIONS = ("All Rarities", *CHARACTER_RARITY_OPTIONS)
 CHARACTER_SUMMARY_COLOR_FILTER_OPTIONS = ("All Colors", *CHARACTER_COLOR_OPTIONS)
 CHARACTER_SUMMARY_L_FILTER_OPTIONS = (
     "All L Values",
-    *(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "P", "R", "B", "G")),
+    *(L_DISPLAY_MAP.get(code, code) for code in ("RB", "O", "R", "P", "B", "G")),
     "None",
 )
 CHARACTER_SUMMARY_R_FILTER_OPTIONS = ("All R Values", "0", "1", "2", "3", "4", "5", "6", "7", "8")
@@ -142,7 +143,7 @@ CHARACTER_IW_TYPE_OPTIONS = (
     "Sela",
     "Bergamot",
 )
-L_ORDER = {"RB": 0, "O": 1, "P": 2, "R": 3, "B": 4, "G": 5, "-": 6, "": 6}
+L_ORDER = {"RB": 0, "O": 1, "R": 2, "P": 3, "B": 4, "G": 5, "-": 6, "": 6}
 RARITY_ORDER = {"EX": 0, "SSR+": 1, "XSR+": 2, "SSR": 3}
 COLOR_ORDER = {"D": 0, "Y": 1, "R": 2, "G": 3, "B": 4}
 SORT_OPTIONS = ("Sort by LB", "Sort by Rarity", "Sort by Color")
