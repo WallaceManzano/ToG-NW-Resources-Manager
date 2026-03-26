@@ -1,4 +1,4 @@
-﻿
+
 from __future__ import annotations
 
 import base64
@@ -1720,6 +1720,7 @@ def apply_runtime_patches() -> None:
     def save_lootbox_as_item_base(self) -> None:
         self._ensure_lootbox_state()
         lootbox_name = self.lootbox_name_var.get().strip()
+        editing_index = self.lootbox_edit_item_base_index
         if not lootbox_name:
             messagebox.showwarning("Missing name", "Enter a lootbox name before saving it as an item base.")
             return
@@ -1760,7 +1761,12 @@ def apply_runtime_patches() -> None:
             messagebox.showwarning("No lootbox items", "Add at least one lootbox item before saving it as an item base.")
             return
 
-        if self.find_item_base(lootbox_name) is not None:
+        existing_item_base = self.find_item_base(lootbox_name)
+        if existing_item_base is not None and (
+            editing_index is None
+            or not (0 <= editing_index < len(self.item_bases))
+            or self.item_bases[editing_index] is not existing_item_base
+        ):
             messagebox.showerror("Duplicate item base", "A catalog item with that name already exists.")
             self.status_var.set("Unable to save lootbox as item base.")
             return
@@ -1946,5 +1952,286 @@ def apply_runtime_patches() -> None:
 
 
 
+
+
+
+    from tog_app.constants import FORMATION_SLOT_LABELS, FORMATION_SLOT_ORDER, TEAM_OPTIONS
+    from tog_app.helpers import character_display_name
+    from tog_app.panels.characters import CharactersPanelMixin
+    from tog_app.panels.formations import FormationsPanelMixin
+
+    def _capture_canvas_yview(canvas: tk.Canvas | None) -> tuple[float, float] | None:
+        if canvas is None or not canvas.winfo_exists():
+            return None
+        return tuple(float(value) for value in canvas.yview())
+
+    def _restore_canvas_yview(self, canvas: tk.Canvas | None, yview: tuple[float, float] | None) -> None:
+        if canvas is None or yview is None:
+            return
+        start = max(0.0, min(1.0, float(yview[0])))
+
+        def restore() -> None:
+            if not canvas.winfo_exists():
+                return
+            canvas.update_idletasks()
+            scrollregion = canvas.bbox("all")
+            if scrollregion is not None:
+                canvas.configure(scrollregion=scrollregion)
+            canvas.yview_moveto(start)
+
+        self.after_idle(restore)
+
+    original_character_refresh_summary = CharactersPanelMixin.refresh_summary
+
+    def _load_character_into_form(self, index: int) -> None:
+        if not (0 <= index < len(self.rows)):
+            return
+        row = self.rows[index]
+        for header in self.headers:
+            self.variables[header].set(self._get_character_form_display_value(header, row.get(header, "")))
+        self.selected_title_var.set(row.get("Name", "") or "Unnamed Character")
+        self.update_icon_preview()
+
+    def _reset_character_form_inputs(self) -> None:
+        for header in self.headers:
+            self.variables[header].set("")
+        self.selected_title_var.set("New Character")
+        self.update_icon_preview()
+
+    def refresh_summary(self, select_index: int | None) -> None:
+        scroll_state = _capture_canvas_yview(getattr(self, "summary_canvas", None))
+        original_character_refresh_summary(self, select_index)
+        _restore_canvas_yview(self, getattr(self, "summary_canvas", None), scroll_state)
+
+    def on_character_summary_filter_changed(self) -> None:
+        self.refresh_summary(select_index=self.selected_index)
+        self.update_summary_count()
+        self.status_var.set("Updated character summary filters.")
+
+    def on_sort_changed(self, _event: tk.Event | None = None) -> None:
+        self.apply_current_sort(save=True)
+        self.refresh_summary(select_index=self.selected_index)
+        self.update_summary_count()
+        if self.selected_index is not None:
+            self._load_character_into_form(self.selected_index)
+        else:
+            self._reset_character_form_inputs()
+        self.render_character_action_bar()
+        self.status_var.set(f"Applied {self.sort_mode_var.get().lower()}.")
+
+    def select_item(self, index: int) -> None:
+        if not (0 <= index < len(self.rows)):
+            return
+
+        self.selected_index = index
+        row = self.rows[index]
+        self._load_character_into_form(index)
+        self.refresh_summary(select_index=index)
+        self.update_summary_count()
+        self.render_character_action_bar()
+        self.status_var.set(f"Selected character #{index + 1}: {row.get('Name', '(no name)')}")
+
+    def clear_form(self, keep_status: bool = False) -> None:
+        self.selected_index = None
+        self._reset_character_form_inputs()
+        self.refresh_summary(select_index=None)
+        self.update_summary_count()
+        self.render_character_action_bar()
+        if not keep_status:
+            self.status_var.set("Editor cleared. Ready for a new character.")
+
+    original_refresh_formations_list = FormationsPanelMixin.refresh_formations_list
+    original_render_formation_editor = FormationsPanelMixin.render_formation_editor
+
+    def refresh_formations_list(self, select_index: int | None) -> None:
+        scroll_state = _capture_canvas_yview(getattr(self, "formations_list_canvas", None))
+        original_refresh_formations_list(self, select_index)
+        _restore_canvas_yview(self, getattr(self, "formations_list_canvas", None), scroll_state)
+
+    def render_formation_editor(
+        self,
+        preserve_editor_scroll: bool = False,
+        preserve_roster_scroll: bool = False,
+        reset_roster_scroll: bool = False,
+    ) -> None:
+        roster_scroll = _capture_canvas_yview(getattr(self, "formations_roster_canvas", None)) if preserve_roster_scroll else None
+        original_render_formation_editor(
+            self,
+            preserve_editor_scroll=preserve_editor_scroll,
+            reset_roster_scroll=reset_roster_scroll,
+        )
+        if preserve_roster_scroll:
+            _restore_canvas_yview(self, getattr(self, "formations_roster_canvas", None), roster_scroll)
+
+    def on_formations_roster_canvas_configure(self, event: tk.Event) -> None:
+        self.formations_roster_canvas.itemconfigure(self.formations_roster_window, width=event.width)
+        self._render_roster_fill_spacer()
+        new_layout_key = self.get_roster_layout_key()
+        if new_layout_key != self.roster_layout_key:
+            self.render_formation_editor(
+                preserve_editor_scroll=True,
+                preserve_roster_scroll=True,
+            )
+
+    def on_team_selection_changed(self, _event: tk.Event | None = None) -> None:
+        selected_team = self.team_name_var.get().strip() or TEAM_OPTIONS[0]
+        self.sync_active_team_slots()
+        self.pending_slot_character = None
+        self.pending_slot_origin = None
+        self.load_team_slots_into_editor(selected_team)
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            preserve_roster_scroll=True,
+        )
+        self.status_var.set(f"Showing {selected_team} for {self.formation_name_var.get().strip() or 'new formation'}.")
+
+    def on_roster_filter_changed(self, _event: tk.Event | None = None) -> None:
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            preserve_roster_scroll=True,
+        )
+
+    def clear_formation_slot(self, slot_key: str) -> None:
+        current_value = self.formation_slot_keys.get(slot_key, "").strip()
+        if not current_value:
+            return
+        self.formation_slot_keys[slot_key] = ""
+        self.formation_slot_vars[slot_key].set("")
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            preserve_roster_scroll=True,
+        )
+        self.status_var.set(f"Cleared {FORMATION_SLOT_LABELS[slot_key]}.")
+
+    def on_slot_clicked(self, slot_key: str) -> None:
+        current_value = self.formation_slot_keys.get(slot_key, "").strip()
+
+        if self.pending_slot_character is None:
+            if not current_value:
+                return
+            self.pending_slot_character = current_value
+            self.pending_slot_origin = slot_key
+            self.highlight_active_slot(slot_key)
+            selected_row = self.find_character_row(current_value)
+            self.status_var.set(
+                f"Selected {character_display_name(selected_row) or current_value}. Click another slot to move it, or click the same slot to clear it."
+            )
+            return
+
+        if self.pending_slot_origin == slot_key:
+            self.clear_formation_slot(slot_key)
+            self.pending_slot_character = None
+            self.pending_slot_origin = None
+            self.highlight_active_slot(None)
+            return
+
+        character_name = self.pending_slot_character
+        origin_slot = self.pending_slot_origin
+        displaced = self.formation_slot_keys.get(slot_key, "").strip()
+
+        if origin_slot is not None:
+            self.formation_slot_keys[origin_slot] = displaced
+            self.formation_slot_vars[origin_slot].set(character_display_name(self.find_character_row(displaced)))
+        self.formation_slot_keys[slot_key] = character_name
+        self.formation_slot_vars[slot_key].set(character_display_name(self.find_character_row(character_name)))
+        self.pending_slot_character = None
+        self.pending_slot_origin = None
+        self.highlight_active_slot(None)
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            preserve_roster_scroll=True,
+        )
+        self.status_var.set(f"Moved {character_display_name(self.find_character_row(character_name)) or character_name} to {FORMATION_SLOT_LABELS[slot_key]}.")
+
+    def assign_character_to_slot(self, character_name: str, slot_key: str) -> None:
+        team_name = self.team_name_var.get().strip()
+        if not team_name:
+            messagebox.showwarning("Missing team", "Enter a team name before assigning characters.")
+            return
+        if not self.can_assign_character_to_team(
+            character_name,
+            team_name,
+            exclude_index=self.selected_formation_index,
+        ):
+            other_team = self.get_character_team_in_editor(character_name)
+            messagebox.showwarning(
+                "Character already assigned",
+                f"{character_name} is already assigned to team '{other_team}'.",
+            )
+            return
+
+        for current_slot in FORMATION_SLOT_ORDER:
+            if self.formation_slot_keys.get(current_slot, "").strip() == character_name:
+                self.formation_slot_keys[current_slot] = ""
+                self.formation_slot_vars[current_slot].set("")
+        self.formation_slot_keys[slot_key] = character_name
+        self.formation_slot_vars[slot_key].set(character_display_name(self.find_character_row(character_name)))
+        self.pending_slot_character = None
+        self.pending_slot_origin = None
+        self.render_formation_editor(
+            preserve_editor_scroll=True,
+            preserve_roster_scroll=True,
+        )
+        self.status_var.set(f"Placed {character_display_name(self.find_character_row(character_name)) or character_name} in {FORMATION_SLOT_LABELS[slot_key]}.")
+
+    original_refresh_packs_list = PacksPanelMixin.refresh_packs_list
+
+    def refresh_packs_list(self, select_index: int | None) -> None:
+        scroll_state = _capture_canvas_yview(getattr(self, "packs_list_canvas", None))
+        original_refresh_packs_list(self, select_index)
+        _restore_canvas_yview(self, getattr(self, "packs_list_canvas", None), scroll_state)
+
+    def _refresh_item_catalog_search_views(self) -> None:
+        if self.pack_scene_var.get() == "editor":
+            scroll_state = _capture_canvas_yview(getattr(self, "packs_editor_canvas", None))
+            self.render_pack_catalog_results()
+            _restore_canvas_yview(self, getattr(self, "packs_editor_canvas", None), scroll_state)
+        popup = getattr(self, "item_base_manager_popup", None)
+        if popup is not None and popup.winfo_exists():
+            canvas = getattr(self, "item_base_manager_canvas", None)
+            scroll_state = _capture_canvas_yview(canvas)
+            self.render_item_base_manager_results()
+            _restore_canvas_yview(self, canvas, scroll_state)
+
+    def _on_item_catalog_search_changed(self, *_args: object) -> None:
+        pending = getattr(self, "_item_catalog_search_after", None)
+        if pending is not None:
+            try:
+                self.after_cancel(pending)
+            except tk.TclError:
+                pass
+
+        self._item_catalog_search_after = self.after(120, self._refresh_item_catalog_search_views)
+
+    original_runtime_refresh_tower_progress_history = TowerProgressPanelMixin.refresh_tower_progress_history
+
+    def refresh_tower_progress_history(self, select_index: int | None) -> None:
+        scroll_state = _capture_canvas_yview(getattr(self, "tower_progress_history_canvas", None))
+        original_runtime_refresh_tower_progress_history(self, select_index)
+        _restore_canvas_yview(self, getattr(self, "tower_progress_history_canvas", None), scroll_state)
+
+    CharactersPanelMixin._load_character_into_form = _load_character_into_form
+    CharactersPanelMixin._reset_character_form_inputs = _reset_character_form_inputs
+    CharactersPanelMixin.refresh_summary = refresh_summary
+    CharactersPanelMixin.on_character_summary_filter_changed = on_character_summary_filter_changed
+    CharactersPanelMixin.on_sort_changed = on_sort_changed
+    CharactersPanelMixin.select_item = select_item
+    CharactersPanelMixin.clear_form = clear_form
+
+    FormationsPanelMixin.refresh_formations_list = refresh_formations_list
+    FormationsPanelMixin.render_formation_editor = render_formation_editor
+    FormationsPanelMixin.on_formations_roster_canvas_configure = on_formations_roster_canvas_configure
+    FormationsPanelMixin.on_team_selection_changed = on_team_selection_changed
+    FormationsPanelMixin.on_roster_filter_changed = on_roster_filter_changed
+    FormationsPanelMixin.clear_formation_slot = clear_formation_slot
+    FormationsPanelMixin.on_slot_clicked = on_slot_clicked
+    FormationsPanelMixin.assign_character_to_slot = assign_character_to_slot
+
+    PacksPanelMixin.refresh_packs_list = refresh_packs_list
+    PacksPanelMixin._refresh_item_catalog_search_views = _refresh_item_catalog_search_views
+    PacksPanelMixin._on_item_catalog_search_changed = _on_item_catalog_search_changed
+
+    TowerProgressPanelMixin.refresh_tower_progress_history = refresh_tower_progress_history
+    _PATCHED = True
 
 
