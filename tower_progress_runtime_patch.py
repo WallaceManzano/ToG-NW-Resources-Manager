@@ -2235,3 +2235,153 @@ def apply_runtime_patches() -> None:
     _PATCHED = True
 
 
+
+    from tog_app.app_window import TogCharacterManager
+    from tog_app.constants import BACKGROUND
+
+    original_setup_styles = TogCharacterManager._setup_styles
+
+    def _setup_styles(self) -> None:
+        original_setup_styles(self)
+        style = ttk.Style(self)
+        style.theme_use("clam")
+
+        style.configure(
+            "TCombobox",
+            padding=(12, 7, 12, 7),
+            arrowsize=16,
+            borderwidth=1,
+            relief="flat",
+            foreground=TEXT,
+            fieldbackground=SURFACE,
+            background=SURFACE,
+            insertcolor=TEXT,
+            arrowcolor=PRIMARY_DARK,
+            bordercolor=BORDER,
+            lightcolor=BORDER,
+            darkcolor=BORDER,
+        )
+        style.map(
+            "TCombobox",
+            foreground=[("disabled", TEXT_MUTED), ("readonly", TEXT)],
+            fieldbackground=[("disabled", SURFACE_MUTED), ("readonly", SURFACE), ("focus", SURFACE)],
+            background=[("readonly", SURFACE), ("active", SURFACE)],
+            bordercolor=[("focus", PRIMARY), ("readonly", BORDER)],
+            lightcolor=[("focus", PRIMARY), ("readonly", BORDER)],
+            darkcolor=[("focus", PRIMARY), ("readonly", BORDER)],
+            arrowcolor=[("disabled", TEXT_MUTED), ("active", PRIMARY_DARK), ("focus", PRIMARY_DARK), ("readonly", PRIMARY_DARK)],
+        )
+
+        style.configure(
+            "TNotebook",
+            background=BACKGROUND,
+            borderwidth=0,
+            tabmargins=(0, 10, 0, 0),
+        )
+        style.configure(
+            "TNotebook.Tab",
+            background=BACKGROUND,
+            foreground=TEXT_MUTED,
+            borderwidth=0,
+            padding=(18, 10),
+            font=self.status_font,
+            focuscolor=BACKGROUND,
+        )
+        style.map(
+            "TNotebook.Tab",
+            background=[("selected", SURFACE), ("active", SURFACE_MUTED)],
+            foreground=[("selected", PRIMARY_DARK), ("active", TEXT)],
+            lightcolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
+            darkcolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
+            bordercolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
+            font=[("selected", self.label_font), ("!selected", self.status_font)],
+        )
+
+        self.option_add("*TCombobox*Listbox.background", SURFACE)
+        self.option_add("*TCombobox*Listbox.foreground", TEXT)
+        self.option_add("*TCombobox*Listbox.selectBackground", PRIMARY_SOFT)
+        self.option_add("*TCombobox*Listbox.selectForeground", PRIMARY_DARK)
+        self.option_add("*TCombobox*Listbox.font", self.body_font)
+
+    TogCharacterManager._setup_styles = _setup_styles
+    _PATCHED = True
+
+
+
+    PACK_SORT_OPTIONS = ("Value (Descending)", "Name (Ascending)")
+
+    def _build_packs_tab(self) -> None:
+        original_build_packs_tab(self)
+        self._ensure_lootbox_state()
+        if not hasattr(self, "pack_sort_mode_var"):
+            self.pack_sort_mode_var = tk.StringVar(value=PACK_SORT_OPTIONS[0])
+
+        packs_header = None
+        if getattr(self, "packs_list_scene", None) is not None:
+            children = self.packs_list_scene.winfo_children()
+            if children:
+                packs_header = children[0]
+
+        if packs_header is None or not packs_header.winfo_exists():
+            return
+
+        list_actions = None
+        for child in packs_header.winfo_children():
+            if isinstance(child, tk.Frame):
+                buttons = [widget for widget in child.winfo_children() if isinstance(widget, tk.Button)]
+                if len(buttons) >= 2:
+                    list_actions = child
+                    break
+
+        existing_sort = getattr(self, "packs_sort_wrap", None)
+        if existing_sort is not None and existing_sort.winfo_exists():
+            existing_sort.destroy()
+
+        packs_header.columnconfigure(1, weight=0)
+        packs_header.columnconfigure(2, weight=0)
+
+        sort_wrap = tk.Frame(packs_header, bg=SURFACE)
+        sort_wrap.grid(row=0, column=1, sticky="e", padx=(0, 12))
+        self.packs_sort_wrap = sort_wrap
+        tk.Label(
+            sort_wrap,
+            text="Sort",
+            bg=SURFACE,
+            fg=TEXT_MUTED,
+            font=self.label_font,
+        ).pack(anchor="e")
+        sort_picker = ttk.Combobox(
+            sort_wrap,
+            textvariable=self.pack_sort_mode_var,
+            values=PACK_SORT_OPTIONS,
+            state="readonly",
+            width=18,
+        )
+        sort_picker.pack(anchor="e", pady=(6, 0), ipady=4)
+        sort_picker.bind("<<ComboboxSelected>>", self.on_pack_sort_changed)
+        self.packs_sort_picker = sort_picker
+
+        if list_actions is not None and list_actions.winfo_exists():
+            list_actions.grid_configure(row=0, column=2, sticky="e")
+
+    def get_pack_sort_key(self, pack: dict[str, object]) -> tuple[object, ...]:
+        pack_name = normalize_item_name(str(pack.get("pack_name", "") or ""))
+        items = self.clone_pack_items(pack.get("items", []))
+        total_value = self.calculate_pack_total_value(items)
+        price_usd = self.calculate_pack_price_usd(str(pack.get("price_brl", "") or "").strip())
+        ratio = total_value / price_usd if price_usd > 0 else 0.0
+        sort_mode = self.pack_sort_mode_var.get().strip() if hasattr(self, "pack_sort_mode_var") else PACK_SORT_OPTIONS[0]
+        if sort_mode == PACK_SORT_OPTIONS[1]:
+            return (pack_name,)
+        return (-ratio, -total_value, pack_name)
+
+    def on_pack_sort_changed(self, _event: tk.Event | None = None) -> None:
+        self.refresh_packs_list(select_index=self.selected_pack_index)
+        sort_mode = self.pack_sort_mode_var.get().strip() if hasattr(self, "pack_sort_mode_var") else PACK_SORT_OPTIONS[0]
+        self.status_var.set(f"Sorted packs by {sort_mode.lower()}.")
+
+    PacksPanelMixin._build_packs_tab = _build_packs_tab
+    PacksPanelMixin.get_pack_sort_key = get_pack_sort_key
+    PacksPanelMixin.on_pack_sort_changed = on_pack_sort_changed
+    _PATCHED = True
+
