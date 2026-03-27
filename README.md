@@ -149,7 +149,7 @@ The repositories auto-create missing JSON files on first load.
 ## Project Structure
 
 - `app.py`: launcher
-- `patch/tower_progress_runtime_patch.py`: runtime patch entry used before app startup
+- `patch/runtime_patch.py`: shared runtime patch entry used before app startup
 - `tog_app/app_window.py`: main Tk application shell and tab wiring
 - `tog_app/constants.py`: shared constants, UI colors, options, and file paths
 - `tog_app/helpers.py`: normalization, parsing, and display helpers
