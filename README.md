@@ -133,7 +133,7 @@ The repositories auto-create missing JSON files on first load.
 ## Project Structure
 
 - `app.py`: launcher
-- `tower_progress_runtime_patch.py`: runtime patch entry used before app startup
+- `patch/tower_progress_runtime_patch.py`: runtime patch entry used before app startup
 - `tog_app/app_window.py`: main Tk application shell and tab wiring
 - `tog_app/constants.py`: shared constants, UI colors, options, and file paths
 - `tog_app/helpers.py`: normalization, parsing, and display helpers
@@ -142,6 +142,7 @@ The repositories auto-create missing JSON files on first load.
 - `tog_app/panels/characters.py`: Characters tab
 - `tog_app/panels/formations.py`: Formations tab
 - `tog_app/panels/packs.py`: Packs Value tab
+- `tog_app/panels/tasks.py`: Goals tab
 - `tog_app/panels/gacha.py`: Gacha Simulation tab
 - `tog_app/panels/tower_progress.py`: Tower Progress tab
 

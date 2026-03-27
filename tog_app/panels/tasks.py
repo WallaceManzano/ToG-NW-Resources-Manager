@@ -1,199 +1,17 @@
 from __future__ import annotations
 
-import json
 import tkinter as tk
-from pathlib import Path
 from tkinter import messagebox, ttk
+from typing import TYPE_CHECKING
+
+from ..constants import *
+from ..helpers import *
+
+if TYPE_CHECKING:
+    from ..app_window import TogCharacterManager
 
 
-TASK_TYPE_OPTIONS = ("Goal",)
-TASK_FILTER_ALL = "All Goals"
-TASK_FILTER_OPTIONS = (TASK_FILTER_ALL,)
-TASK_URGENCY_URGENT = "Urgent"
-TASK_URGENCY_NOT_URGENT = "Not Urgent"
-TASK_URGENCY_COMPLETED = "Completed"
-TASK_URGENCY_OPTIONS = (
-    TASK_URGENCY_URGENT,
-    TASK_URGENCY_NOT_URGENT,
-    TASK_URGENCY_COMPLETED,
-)
-TASK_URGENCY_ORDER = {
-    TASK_URGENCY_URGENT: 0,
-    TASK_URGENCY_NOT_URGENT: 1,
-    TASK_URGENCY_COMPLETED: 2,
-}
-TASK_URGENCY_ACCENTS = {
-    TASK_URGENCY_URGENT: "#C62828",
-    TASK_URGENCY_NOT_URGENT: "#F9A825",
-    TASK_URGENCY_COMPLETED: "#2E7D32",
-}
-TASK_URGENCY_BACKGROUNDS = {
-    TASK_URGENCY_URGENT: "#FDECEC",
-    TASK_URGENCY_NOT_URGENT: "#FFF8E1",
-    TASK_URGENCY_COMPLETED: "#EAF7ED",
-}
-
-
-def canonical_task_type(value: str) -> str:
-    return TASK_TYPE_OPTIONS[0]
-
-
-def canonical_task_urgency(value: str) -> str:
-    cleaned = " ".join(str(value or "").strip().split())
-    if not cleaned:
-        return TASK_URGENCY_NOT_URGENT
-    normalized = cleaned.casefold()
-    aliases = {
-        TASK_URGENCY_URGENT.casefold(): TASK_URGENCY_URGENT,
-        TASK_URGENCY_NOT_URGENT.casefold(): TASK_URGENCY_NOT_URGENT,
-        TASK_URGENCY_COMPLETED.casefold(): TASK_URGENCY_COMPLETED,
-        "non urgent": TASK_URGENCY_NOT_URGENT,
-        "normal": TASK_URGENCY_NOT_URGENT,
-        "done": TASK_URGENCY_COMPLETED,
-    }
-    return aliases.get(normalized, TASK_URGENCY_NOT_URGENT)
-
-
-def truncate_task_text(value: str, max_length: int) -> str:
-    cleaned = " ".join(str(value or "").strip().split())
-    if len(cleaned) <= max_length:
-        return cleaned
-    return cleaned[: max(0, max_length - 3)].rstrip() + "..."
-
-
-class TaskRepository:
-    def __init__(self, json_path: Path) -> None:
-        self.json_path = json_path
-
-    def ensure_file(self) -> None:
-        if self.json_path.exists():
-            return
-        self.json_path.parent.mkdir(parents=True, exist_ok=True)
-        self.save([])
-
-    def build_payload(self, tasks: list[dict[str, str]]) -> dict[str, object]:
-        return {
-            "tasks": [
-                {
-                    "task_type": canonical_task_type(task.get("task_type", "")),
-                    "body": str(task.get("body", "") or "").strip(),
-                    "urgency": canonical_task_urgency(task.get("urgency", "")),
-                    "character_key": str(task.get("character_key", "") or "").strip(),
-                }
-                for task in tasks
-                if str(task.get("body", "") or "").strip()
-            ]
-        }
-
-    def _write_payload(self, payload: dict[str, object]) -> None:
-        with self.json_path.open("w", encoding="utf-8") as json_file:
-            json.dump(payload, json_file, indent=2)
-
-    def load(self) -> list[dict[str, str]]:
-        self.ensure_file()
-        with self.json_path.open("r", encoding="utf-8-sig") as json_file:
-            payload = json.load(json_file)
-
-        if isinstance(payload, dict):
-            raw_tasks = payload.get("tasks", [])
-        elif isinstance(payload, list):
-            raw_tasks = payload
-        else:
-            raw_tasks = []
-
-        tasks: list[dict[str, str]] = []
-        if isinstance(raw_tasks, list):
-            for entry in raw_tasks:
-                if not isinstance(entry, dict):
-                    continue
-                body = str(entry.get("body", "") or "").strip()
-                if not body:
-                    continue
-                tasks.append(
-                    {
-                        "task_type": canonical_task_type(str(entry.get("task_type", "") or entry.get("type", "") or "")),
-                        "body": body,
-                        "urgency": canonical_task_urgency(str(entry.get("urgency", "") or "")),
-                        "character_key": str(entry.get("character_key", "") or entry.get("character", "") or "").strip(),
-                    }
-                )
-
-        expected_payload = self.build_payload(tasks)
-        if payload != expected_payload:
-            self._write_payload(expected_payload)
-        return tasks
-
-    def save(self, tasks: list[dict[str, str]]) -> None:
-        self.json_path.parent.mkdir(parents=True, exist_ok=True)
-        self._write_payload(self.build_payload(tasks))
-
-
-def apply_tasks_runtime_patch() -> None:
-    from tog_app import repositories
-    from tog_app.app_window import TogCharacterManager
-    from tog_app.constants import (
-        BACKGROUND,
-        BASE_DIR,
-        BORDER,
-        DANGER,
-        PLACEHOLDER_FILL,
-        PREVIEW_ICON_HEIGHT,
-        PREVIEW_ICON_WIDTH,
-        PRIMARY,
-        PRIMARY_DARK,
-        PRIMARY_SOFT,
-        SURFACE,
-        SURFACE_MUTED,
-        TEXT,
-        TEXT_MUTED,
-    )
-    from tog_app.helpers import (
-        box_center,
-        box_size,
-        canonical_character_version_key,
-        centered_ratio_box,
-        character_display_name,
-        character_version_key,
-        display_color_value,
-        get_color_border,
-        inset_box,
-        normalize_character_name,
-    )
-
-    if getattr(TogCharacterManager, "_tasks_runtime_patch_applied", False):
-        return
-
-    repositories.TaskRepository = TaskRepository
-    default_tasks_path = BASE_DIR / "db" / "tasks.json"
-
-    original_app_init = TogCharacterManager.__init__
-    original_build_layout = TogCharacterManager._build_layout
-    original_on_tab_changed = TogCharacterManager.on_tab_changed
-    original_load_rows = TogCharacterManager.load_rows
-    original_create_row = TogCharacterManager.create_row
-    original_update_row = TogCharacterManager.update_row
-    original_delete_row = TogCharacterManager.delete_row
-
-    def _ensure_tasks_state(self) -> None:
-        if getattr(self, "_tasks_state_ready", False):
-            return
-        self.tasks_path = default_tasks_path
-        self.task_repository = TaskRepository(self.tasks_path)
-        self.tasks = []
-        self.task_summary_var = tk.StringVar(value="0 goals")
-        self.task_title_var = tk.StringVar(value="New Goal")
-        self.task_type_var = tk.StringVar(value=TASK_TYPE_OPTIONS[0])
-        self.task_filter_var = tk.StringVar(value=TASK_FILTER_OPTIONS[0])
-        self.task_urgency_var = tk.StringVar(value=TASK_URGENCY_NOT_URGENT)
-        self.task_character_var = tk.StringVar(value="No linked character")
-        self.selected_task_index = None
-        self.task_character_option_map = {"No linked character": ""}
-        self.task_body_text = None
-        self.task_character_picker = None
-        self.task_link_preview_icon_canvas = None
-        self.task_link_preview_text_frame = None
-        self._tasks_state_ready = True
-
+class TasksPanelMixin:
     def _task_body_text(self) -> str:
         widget = getattr(self, "task_body_text", None)
         if widget is None or not widget.winfo_exists():
@@ -233,7 +51,7 @@ def apply_tasks_runtime_patch() -> None:
     def update_task_summary(self) -> None:
         self.task_summary_var.set(f"{len(self.tasks)} goal(s)")
 
-    def _task_matches_filter(self, task: dict[str, str]) -> bool:
+    def _task_matches_filter(self, _task: dict[str, str]) -> bool:
         return True
 
     def get_filtered_tasks(self) -> list[tuple[int, dict[str, str]]]:
@@ -630,7 +448,6 @@ def apply_tasks_runtime_patch() -> None:
         self._render_task_link_preview()
 
     def load_tasks(self, select_index: int | None) -> None:
-        self._ensure_tasks_state()
         try:
             self.tasks = self.task_repository.load()
         except Exception as exc:
@@ -746,6 +563,7 @@ def apply_tasks_runtime_patch() -> None:
         if self.selected_task_index is None:
             messagebox.showwarning("No selection", "Select a goal from the list first.")
             return
+
         previous_tasks = self.clone_tasks()
         task = self.tasks[self.selected_task_index].copy()
         task["urgency"] = canonical_task_urgency(urgency)
@@ -757,6 +575,7 @@ def apply_tasks_runtime_patch() -> None:
             messagebox.showerror("Update failed", str(exc))
             self.status_var.set("Unable to update goal urgency.")
             return
+
         updated_index = next((idx for idx, existing in enumerate(self.tasks) if existing == task), self.selected_task_index)
         self.select_task(updated_index)
         self.status_var.set(f"Marked goal as {task['urgency'].lower()}.")
@@ -772,6 +591,7 @@ def apply_tasks_runtime_patch() -> None:
         new_key = character_version_key(new_row)
         if not old_key or not new_key or old_key == new_key:
             return
+
         for task in self.tasks:
             linked_key = str(task.get("character_key", "") or "").strip()
             if not linked_key:
@@ -784,6 +604,7 @@ def apply_tasks_runtime_patch() -> None:
         target_row = self.find_character_row(character_name)
         if target_row is None and not str(character_name or "").strip():
             return []
+
         usage: list[str] = []
         for task in self.tasks:
             linked_key = str(task.get("character_key", "") or "").strip()
@@ -794,122 +615,40 @@ def apply_tasks_runtime_patch() -> None:
                 usage.append(self._task_primary_line(task.get("body", "")))
         return usage
 
-    def _build_layout(self) -> None:
-        self._ensure_tasks_state()
-        original_build_layout(self)
-        if not hasattr(self, "tasks_tab") or not self.tasks_tab.winfo_exists():
-            self.tasks_tab = tk.Frame(self.notebook, bg=BACKGROUND)
-            self.notebook.insert(0, self.tasks_tab, text="Goals")
-            self._build_tasks_tab()
-            self.notebook.select(self.tasks_tab)
-
-    def __init__(self) -> None:
-        original_app_init(self)
-        self._ensure_tasks_state()
-        self.load_tasks(select_index=None)
-
-    def on_tab_changed(self, event: tk.Event | None = None) -> None:
-        selected_tab = self.notebook.select() if hasattr(self, "notebook") else ""
-        if hasattr(self, "tasks_tab") and selected_tab == str(self.tasks_tab):
-            self.after_idle(self.refresh_tasks_tab_visuals)
-        original_on_tab_changed(self, event)
-
-    def load_rows(self, select_index: int | None) -> None:
-        original_load_rows(self, select_index)
-        if getattr(self, "_tasks_state_ready", False):
-            self.refresh_task_character_picker_options()
-            if hasattr(self, "tasks_list_container") and self.tasks_list_container.winfo_exists():
-                self.refresh_tasks_list(select_index=self.selected_task_index)
-                self._render_task_link_preview()
-
-    def create_row(self) -> None:
-        previous_count = len(self.rows)
-        original_create_row(self)
-        if len(self.rows) != previous_count:
-            self.refresh_task_character_picker_options()
+    def refresh_task_links_after_character_data_change(self) -> None:
+        self.refresh_task_character_picker_options()
+        if hasattr(self, "tasks_list_container") and self.tasks_list_container.winfo_exists():
             self.refresh_tasks_list(select_index=self.selected_task_index)
             self._render_task_link_preview()
 
-    def update_row(self) -> None:
-        previous_row = self.rows[self.selected_index].copy() if self.selected_index is not None and 0 <= self.selected_index < len(self.rows) else None
+    def on_character_rows_loaded(self) -> None:
+        self.refresh_task_links_after_character_data_change()
+
+    def on_character_created(self) -> None:
+        self.refresh_task_links_after_character_data_change()
+
+    def on_character_updated(self, previous_row: dict[str, str], new_row: dict[str, str]) -> None:
         previous_tasks = self.clone_tasks()
-        original_update_row(self)
-        if previous_row is None or self.selected_index is None or not (0 <= self.selected_index < len(self.rows)):
-            self.refresh_task_character_picker_options()
-            self.refresh_tasks_list(select_index=self.selected_task_index)
-            self._render_task_link_preview()
-            return
         try:
-            self.rename_character_in_tasks(previous_row, self.rows[self.selected_index])
+            self.rename_character_in_tasks(previous_row, new_row)
             self.task_repository.save(self.tasks)
         except Exception as exc:
             self.tasks = previous_tasks
             messagebox.showerror("Goal link update failed", f"Updated the character, but goal links could not be synchronized:\n{exc}")
-        self.refresh_task_character_picker_options()
-        self.refresh_tasks_list(select_index=self.selected_task_index)
-        self._render_task_link_preview()
+        self.refresh_task_links_after_character_data_change()
 
-    def delete_row(self) -> None:
-        if self.selected_index is not None and 0 <= self.selected_index < len(self.rows):
-            row = self.rows[self.selected_index]
-            usage = self.get_character_task_usage(character_version_key(row))
-            if usage:
-                messagebox.showwarning(
-                    "Character linked to goals",
-                    "Remove this character from the following goal(s) before deleting it:\n" + "\n".join(usage),
-                )
-                return
-        original_delete_row(self)
-        self.refresh_task_character_picker_options()
-        self.refresh_tasks_list(select_index=self.selected_task_index)
-        self._render_task_link_preview()
+    def ensure_character_can_be_deleted_for_tasks(self, row: dict[str, str]) -> bool:
+        usage = self.get_character_task_usage(character_version_key(row))
+        if not usage:
+            return True
+        messagebox.showwarning(
+            "Character linked to goals",
+            "Remove this character from the following goal(s) before deleting it:\n" + "\n".join(usage),
+        )
+        return False
+
+    def on_character_deleted(self) -> None:
+        self.refresh_task_links_after_character_data_change()
 
     def _on_task_character_selected(self) -> None:
         self._render_task_link_preview()
-
-    TogCharacterManager._ensure_tasks_state = _ensure_tasks_state
-    TogCharacterManager._task_body_text = _task_body_text
-    TogCharacterManager._set_task_body_text = _set_task_body_text
-    TogCharacterManager._task_primary_line = _task_primary_line
-    TogCharacterManager._task_secondary_line = _task_secondary_line
-    TogCharacterManager._task_sort_key = _task_sort_key
-    TogCharacterManager.sort_tasks = sort_tasks
-    TogCharacterManager.clone_tasks = clone_tasks
-    TogCharacterManager.update_task_summary = update_task_summary
-    TogCharacterManager._task_matches_filter = _task_matches_filter
-    TogCharacterManager.get_filtered_tasks = get_filtered_tasks
-    TogCharacterManager._build_task_character_options = _build_task_character_options
-    TogCharacterManager.refresh_task_character_picker_options = refresh_task_character_picker_options
-    TogCharacterManager._task_character_label_from_key = _task_character_label_from_key
-    TogCharacterManager._task_character_row = _task_character_row
-    TogCharacterManager._task_character_summary = _task_character_summary
-    TogCharacterManager._render_task_link_preview = _render_task_link_preview
-    TogCharacterManager._on_task_character_selected = _on_task_character_selected
-    TogCharacterManager._build_tasks_tab = _build_tasks_tab
-    TogCharacterManager.render_task_action_bar = render_task_action_bar
-    TogCharacterManager.refresh_tasks_list = refresh_tasks_list
-    TogCharacterManager._add_task_card = _add_task_card
-    TogCharacterManager.refresh_tasks_tab_visuals = refresh_tasks_tab_visuals
-    TogCharacterManager.on_task_filter_changed = on_task_filter_changed
-    TogCharacterManager.collect_task_data = collect_task_data
-    TogCharacterManager.prepare_task_for_save = prepare_task_for_save
-    TogCharacterManager.save_tasks = save_tasks
-    TogCharacterManager.load_tasks = load_tasks
-    TogCharacterManager.select_task = select_task
-    TogCharacterManager.clear_task_form = clear_task_form
-    TogCharacterManager.create_task = create_task
-    TogCharacterManager.update_task = update_task
-    TogCharacterManager.delete_task = delete_task
-    TogCharacterManager._set_selected_task_urgency = _set_selected_task_urgency
-    TogCharacterManager.mark_task_urgent = mark_task_urgent
-    TogCharacterManager.mark_task_completed = mark_task_completed
-    TogCharacterManager.rename_character_in_tasks = rename_character_in_tasks
-    TogCharacterManager.get_character_task_usage = get_character_task_usage
-    TogCharacterManager._build_layout = _build_layout
-    TogCharacterManager.__init__ = __init__
-    TogCharacterManager.on_tab_changed = on_tab_changed
-    TogCharacterManager.load_rows = load_rows
-    TogCharacterManager.create_row = create_row
-    TogCharacterManager.update_row = update_row
-    TogCharacterManager.delete_row = delete_row
-    TogCharacterManager._tasks_runtime_patch_applied = True

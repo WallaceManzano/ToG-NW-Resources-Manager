@@ -7,6 +7,8 @@ from .constants import DEFAULT_HEADERS, FORMATION_SLOT_ORDER, TEAM_OPTIONS, TOWE
 from .helpers import (
     canonical_character_field_label,
     canonical_character_field_value,
+    canonical_task_type,
+    canonical_task_urgency,
     canonical_tower_mode_key,
     display_tower_mode_label,
     empty_team_map,
@@ -263,6 +265,73 @@ class PackRepository:
 
         with self.json_path.open("w", encoding="utf-8") as json_file:
             json.dump(payload, json_file, indent=2)
+
+
+class TaskRepository:
+    def __init__(self, json_path: Path) -> None:
+        self.json_path = json_path
+
+    def ensure_file(self) -> None:
+        if self.json_path.exists():
+            return
+        self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        self.save([])
+
+    def build_payload(self, tasks: list[dict[str, str]]) -> dict[str, object]:
+        return {
+            "tasks": [
+                {
+                    "task_type": canonical_task_type(task.get("task_type", "")),
+                    "body": str(task.get("body", "") or "").strip(),
+                    "urgency": canonical_task_urgency(task.get("urgency", "")),
+                    "character_key": str(task.get("character_key", "") or "").strip(),
+                }
+                for task in tasks
+                if str(task.get("body", "") or "").strip()
+            ]
+        }
+
+    def _write_payload(self, payload: dict[str, object]) -> None:
+        with self.json_path.open("w", encoding="utf-8") as json_file:
+            json.dump(payload, json_file, indent=2)
+
+    def load(self) -> list[dict[str, str]]:
+        self.ensure_file()
+        with self.json_path.open("r", encoding="utf-8-sig") as json_file:
+            payload = json.load(json_file)
+
+        if isinstance(payload, dict):
+            raw_tasks = payload.get("tasks", [])
+        elif isinstance(payload, list):
+            raw_tasks = payload
+        else:
+            raw_tasks = []
+
+        tasks: list[dict[str, str]] = []
+        if isinstance(raw_tasks, list):
+            for entry in raw_tasks:
+                if not isinstance(entry, dict):
+                    continue
+                body = str(entry.get("body", "") or "").strip()
+                if not body:
+                    continue
+                tasks.append(
+                    {
+                        "task_type": canonical_task_type(str(entry.get("task_type", "") or entry.get("type", "") or "")),
+                        "body": body,
+                        "urgency": canonical_task_urgency(str(entry.get("urgency", "") or "")),
+                        "character_key": str(entry.get("character_key", "") or entry.get("character", "") or "").strip(),
+                    }
+                )
+
+        expected_payload = self.build_payload(tasks)
+        if payload != expected_payload:
+            self._write_payload(expected_payload)
+        return tasks
+
+    def save(self, tasks: list[dict[str, str]]) -> None:
+        self.json_path.parent.mkdir(parents=True, exist_ok=True)
+        self._write_payload(self.build_payload(tasks))
 
 
 class TowerProgressRepository:

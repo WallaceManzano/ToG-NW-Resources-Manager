@@ -2385,6 +2385,3 @@ def apply_runtime_patches() -> None:
     PacksPanelMixin.on_pack_sort_changed = on_pack_sort_changed
     _PATCHED = True
 
-
-    from tasks_runtime_patch import apply_tasks_runtime_patch
-    apply_tasks_runtime_patch()

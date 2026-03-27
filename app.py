@@ -1,4 +1,4 @@
-﻿from tower_progress_runtime_patch import apply_runtime_patches
+from patch.tower_progress_runtime_patch import apply_runtime_patches
 
 apply_runtime_patches()
 

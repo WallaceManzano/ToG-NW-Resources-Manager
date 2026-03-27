@@ -447,6 +447,8 @@ class CharactersPanelMixin:
         self.refresh_summary(select_index=select_index)
         self.refresh_formations_list(select_index=self.selected_formation_index)
         self.render_formation_editor()
+        if hasattr(self, "on_character_rows_loaded"):
+            self.on_character_rows_loaded()
         self.render_character_action_bar()
 
         if select_index is None or not self.rows:
@@ -956,6 +958,8 @@ class CharactersPanelMixin:
         self.update_summary_count()
         self.select_item(new_index)
         self.render_formation_editor()
+        if hasattr(self, "on_character_created"):
+            self.on_character_created()
         self.status_var.set(f"Created character: {row.get('Name', '(no name)')}")
 
     def update_row(self) -> None:
@@ -985,6 +989,8 @@ class CharactersPanelMixin:
         self.select_item(updated_index)
         self.refresh_formations_list(select_index=self.selected_formation_index)
         self.render_formation_editor()
+        if hasattr(self, "on_character_updated"):
+            self.on_character_updated(previous_row, row)
         self.status_var.set(f"Updated character: {row.get('Name', '(no name)')}")
 
     def delete_row(self) -> None:
@@ -1001,6 +1007,8 @@ class CharactersPanelMixin:
                 "Character in team",
                 f"Remove '{item_name}' from team '{assigned_team}' before deleting the character.",
             )
+            return
+        if hasattr(self, "ensure_character_can_be_deleted_for_tasks") and not self.ensure_character_can_be_deleted_for_tasks(row):
             return
         confirmed = messagebox.askyesno("Delete character", f"Delete '{item_name}' from the character store?")
         if not confirmed:
@@ -1022,6 +1030,8 @@ class CharactersPanelMixin:
         else:
             self.clear_form(keep_status=True)
         self.render_formation_editor()
+        if hasattr(self, "on_character_deleted"):
+            self.on_character_deleted()
         self.status_var.set(f"Deleted character: {item_name}")
 
     def rename_character_in_formations(

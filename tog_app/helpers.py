@@ -14,6 +14,10 @@ from .constants import (
     ICON_RATIO_WIDTH,
     LEVEL_STAR_COLOR_MAP,
     L_DISPLAY_MAP,
+    TASK_TYPE_OPTIONS,
+    TASK_URGENCY_COMPLETED,
+    TASK_URGENCY_NOT_URGENT,
+    TASK_URGENCY_URGENT,
     TEAM_OPTIONS,
     TEXT_MUTED,
     TOWER_MODE_LABELS,
@@ -42,6 +46,14 @@ TOWER_MODE_KEY_ALIASES = {
     **{str(mode["key"]).casefold(): str(mode["key"]) for mode in TOWER_TRACKED_MODES},
     **{str(mode["label"]).casefold(): str(mode["key"]) for mode in TOWER_TRACKED_MODES},
 }
+TASK_URGENCY_ALIASES = {
+    TASK_URGENCY_URGENT.casefold(): TASK_URGENCY_URGENT,
+    TASK_URGENCY_NOT_URGENT.casefold(): TASK_URGENCY_NOT_URGENT,
+    TASK_URGENCY_COMPLETED.casefold(): TASK_URGENCY_COMPLETED,
+    "non urgent": TASK_URGENCY_NOT_URGENT,
+    "normal": TASK_URGENCY_NOT_URGENT,
+    "done": TASK_URGENCY_COMPLETED,
+}
 
 
 def normalize_team_name(value: str) -> str:
@@ -54,6 +66,24 @@ def normalize_character_name(value: str) -> str:
 
 def normalize_item_name(value: str) -> str:
     return " ".join((value or "").strip().split()).casefold()
+
+
+def canonical_task_type(_value: str) -> str:
+    return TASK_TYPE_OPTIONS[0]
+
+
+def canonical_task_urgency(value: str) -> str:
+    cleaned = " ".join(str(value or "").strip().split())
+    if not cleaned:
+        return TASK_URGENCY_NOT_URGENT
+    return TASK_URGENCY_ALIASES.get(cleaned.casefold(), TASK_URGENCY_NOT_URGENT)
+
+
+def truncate_task_text(value: str, max_length: int) -> str:
+    cleaned = " ".join(str(value or "").strip().split())
+    if len(cleaned) <= max_length:
+        return cleaned
+    return cleaned[: max(0, max_length - 3)].rstrip() + "..."
 
 
 def canonical_tower_mode_key(value: str) -> str:
