@@ -79,7 +79,13 @@ class TasksPanelMixin:
             b_label = row.get("B", "")
             r_label = row.get("R", "")
             base_label = character_display_name(row)
-            label = f"{base_label} - {l_label} {b_label} - {r_label}" if l_label else base_label
+            variant_parts: list[str] = []
+            lb_label = " ".join(part for part in (str(l_label or "").strip(), str(b_label or "").strip()) if part)
+            if lb_label:
+                variant_parts.append(lb_label)
+            if str(r_label or "").strip():
+                variant_parts.append(str(r_label).strip())
+            label = " - ".join([base_label, *variant_parts]) if variant_parts else base_label
             if not label:
                 label = key
             unique_label = label
@@ -113,7 +119,7 @@ class TasksPanelMixin:
 
     def _task_character_row(self, task: dict[str, str]) -> dict[str, str] | None:
         character_key = str(task.get("character_key", "") or "").strip()
-        if not character_key:
+        if not character_key or character_key == "":
             return None
         return self.find_character_row(character_key)
 
@@ -366,24 +372,24 @@ class TasksPanelMixin:
         title = tk.Label(card, text=self._task_primary_line(task.get("body", "")), bg=bg, fg=TEXT, font=self.card_title_font, anchor="w", justify="left", wraplength=520)
         title.grid(row=1, column=0, sticky="ew", pady=(10, 4))
 
-        summary = tk.Label(card, text=self._task_secondary_line(task.get("body", "")), bg=bg, fg=TEXT_MUTED, font=self.body_font, anchor="w", justify="left", wraplength=640)
-        summary.grid(row=2, column=0, sticky="ew")
+        # summary = tk.Label(card, text=self._task_secondary_line(task.get("body", "")), bg=bg, fg=TEXT_MUTED, font=self.body_font, anchor="w", justify="left", wraplength=640)
+        # summary.grid(row=2, column=0, sticky="ew")
 
         link_row = tk.Frame(card, bg=bg)
-        link_row.grid(row=3, column=0, sticky="ew", pady=(10, 0))
+        link_row.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         link_row.columnconfigure(1, weight=1)
 
         character_row = self._task_character_row(task)
-        icon_canvas = tk.Canvas(link_row, width=56, height=72, bg=bg, highlightthickness=0, bd=0)
-        icon_canvas.grid(row=0, column=0, sticky="nw")
-        preview_box = centered_ratio_box(56, 72, 4)
-        image_box = inset_box(preview_box, 2)
-        image_width, image_height = box_size(image_box)
-        center_x, center_y = box_center(image_box)
-        icon_border = get_color_border(character_row.get("Color", "") if character_row else "")
-        icon_canvas.create_rectangle(*preview_box, outline=icon_border, fill=PLACEHOLDER_FILL, width=1)
-
+        
         if character_row is not None:
+            icon_canvas = tk.Canvas(link_row, width=56, height=72, bg=bg, highlightthickness=0, bd=0)
+            icon_canvas.grid(row=0, column=0, sticky="nw")
+            preview_box = centered_ratio_box(56, 72, 4)
+            image_box = inset_box(preview_box, 2)
+            image_width, image_height = box_size(image_box)
+            center_x, center_y = box_center(image_box)
+            icon_border = get_color_border(character_row.get("Color", "") if character_row else "")
+            icon_canvas.create_rectangle(*preview_box, outline=icon_border, fill=PLACEHOLDER_FILL, width=1)
             image = self.get_summary_image(character_row.get("Icon", ""), image_width, image_height)
             if image is not None:
                 icon_canvas.create_image(center_x, center_y, image=image)
@@ -392,20 +398,21 @@ class TasksPanelMixin:
                 icon_canvas.create_text(center_x, center_y, text="No icon", fill=TEXT_MUTED, font=self.card_meta_font)
             icon_canvas.configure(cursor="hand2")
             icon_canvas.bind("<Button-1>", lambda _event, current=character_row: self.open_character_popup(current))
-        else:
-            icon_canvas.create_text(center_x, center_y, text="No\nlink", fill=TEXT_MUTED, font=self.card_meta_font, justify="center")
 
-        link_text = tk.Frame(link_row, bg=bg)
-        link_text.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
-        tk.Label(link_text, text="Linked Character", bg=bg, fg=TEXT_MUTED, font=self.label_font, anchor="w").pack(anchor="w")
-        tk.Label(link_text, text=self._task_character_summary(character_row), bg=bg, fg=TEXT, font=self.card_meta_font, anchor="w", justify="left", wraplength=540).pack(anchor="w", pady=(4, 0))
+            link_text = tk.Frame(link_row, bg=bg)
+            link_text.grid(row=0, column=1, sticky="nsew", padx=(12, 0))
+            tk.Label(link_text, text="Linked Character", bg=bg, fg=TEXT_MUTED, font=self.label_font, anchor="w").pack(anchor="w")
+            tk.Label(link_text, text=self._task_character_summary(character_row), bg=bg, fg=TEXT, font=self.card_meta_font, anchor="w", justify="left", wraplength=540).pack(anchor="w", pady=(4, 0))
+            self._bind_mousewheel(self.tasks_list_canvas, card, badge, title, link_row, link_text, icon_canvas)
+            for widget in (card, badge, title, link_row, link_text):
+                widget.bind("<Button-1>", lambda _event, idx=index: self.select_task(idx))
+            for child in link_text.winfo_children():
+                child.bind("<Button-1>", lambda _event, idx=index: self.select_task(idx))
 
-        self._bind_mousewheel(self.tasks_list_canvas, card, badge, title, summary, link_row, link_text, icon_canvas)
-        for widget in (card, badge, title, summary, link_row, link_text):
-            widget.bind("<Button-1>", lambda _event, idx=index: self.select_task(idx))
-        for child in link_text.winfo_children():
-            child.bind("<Button-1>", lambda _event, idx=index: self.select_task(idx))
-
+        else:            
+            self._bind_mousewheel(self.tasks_list_canvas, card, badge, title, link_row)
+            for widget in (card, badge, title, link_row):
+                widget.bind("<Button-1>", lambda _event, idx=index: self.select_task(idx))
     def refresh_tasks_tab_visuals(self) -> None:
         self.refresh_task_character_picker_options()
         self.refresh_tasks_list(select_index=self.selected_task_index)

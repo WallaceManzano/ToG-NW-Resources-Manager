@@ -1639,11 +1639,12 @@ def apply_runtime_patches() -> None:
         )
         style.map(
             "TNotebook.Tab",
-            background=[("selected", SURFACE), ("active", SURFACE_MUTED)],
+            background=[("selected", SURFACE_MUTED), ("active", SURFACE_MUTED)],
             foreground=[("selected", PRIMARY_DARK), ("active", TEXT)],
-            lightcolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
-            darkcolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
-            bordercolor=[("selected", PRIMARY_SOFT), ("active", BORDER)],
+            lightcolor=[("selected", BORDER), ("active", BORDER)],
+            darkcolor=[("selected", BORDER), ("active", BORDER)],
+            bordercolor=[("selected", BORDER), ("active", BORDER)],
+            padding=[("selected", (10, 10))],
             font=[("selected", self.label_font), ("!selected", self.status_font)],
             # expand=[("selected", [15, 15, 15, 0])] 
         )
