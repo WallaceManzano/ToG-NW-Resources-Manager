@@ -2,8 +2,9 @@
 
 `Tower of God: New World Account Manager` is a desktop app built with Python and Tkinter for tracking multiple `Tower of God: New World` resources in one place.
 
-It currently combines five tools in a single UI:
+It currently combines six tools in a single UI:
 
+- goals tracking
 - character collection management
 - multi-team formation building
 - pack value analysis
@@ -11,6 +12,20 @@ It currently combines five tools in a single UI:
 - tower progress history tracking
 
 ## Main Features
+
+### Goals
+
+- Create, update, and delete saved goals
+- Store goals in `db/tasks.json`
+- Track each goal with:
+  - free-form body text
+  - urgency status
+  - optional linked character
+- Keep urgent goals at the top and completed goals at the bottom
+- Mark goals as urgent or completed directly from the editor action bar
+- Show linked-character previews with quick access to the character popup
+- Prevent deleting a character that is still linked to any goal
+- Automatically update linked goal references when a character version is edited
 
 ### Characters
 
@@ -121,6 +136,7 @@ It currently combines five tools in a single UI:
 
 ## Data Files
 
+- `db/tasks.json`: saved goals
 - `db/characters.json`: character roster
 - `db/formations.json`: saved formations and all team assignments
 - `db/packs.json`: shared item-base catalog and saved packs
@@ -178,6 +194,14 @@ py -m pip install Pillow
 2. Paste a PNG or WebP image URL into the `Icon` field.
 3. Click `Import Image URL`.
 4. Save the character with `Create` or `Update`.
+
+### Track Goals
+
+1. Open the `Goals` tab.
+2. Choose the urgency level.
+3. Optionally link the goal to a character.
+4. Write the goal details in the body field.
+5. Save it with `Create Goal` or update an existing one.
 
 ### Build a Formation
 
