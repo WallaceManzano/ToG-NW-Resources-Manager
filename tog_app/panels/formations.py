@@ -646,7 +646,6 @@ class FormationsPanelMixin:
                 label = tk.Label(
                     meta_row,
                     image=color_icon,
-                    text=color_display,
                     bg=SURFACE,
                     fg=TEXT_MUTED,
                     font=self.body_font,

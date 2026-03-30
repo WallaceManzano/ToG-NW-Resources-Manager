@@ -277,7 +277,7 @@ class CharactersPanelMixin:
         color_text = display_color_value(color_value) or "-"
         image = self.get_color_icon_image(color_code, 20)
         if image is not None:
-            icon_label.configure(image=image, text=color_text, compound="left")
+            icon_label.configure(image=image)
             icon_label.image = image  # type: ignore[attr-defined]
         else:
             icon_label.configure(image="", text=color_text)
@@ -740,7 +740,6 @@ class CharactersPanelMixin:
                 label = tk.Label(
                     meta_row,
                     image=color_icon,
-                    text=color_display,
                     fg=TEXT_MUTED,
                     font=self.card_meta_font,
                     compound="left",
