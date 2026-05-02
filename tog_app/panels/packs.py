@@ -220,29 +220,32 @@ class PacksPanelMixin:
         pack_card.grid(row=1, column=0, sticky="ew", pady=(16, 12))
         pack_card.columnconfigure(0, weight=1)
         pack_card.columnconfigure(1, weight=1)
+        pack_card.columnconfigure(2, weight=1)
 
-        tk.Label(pack_card, text="Pack Details", bg=SURFACE_MUTED, fg=TEXT, font=self.section_font).grid(row=0, column=0, columnspan=2, sticky="w")
+        tk.Label(pack_card, text="Pack Details", bg=SURFACE_MUTED, fg=TEXT, font=self.section_font).grid(row=0, column=0, columnspan=3, sticky="w")
         self._make_input(pack_card, "Pack Name", self.pack_name_var, 1, 0)
         self._make_input(pack_card, "Price (BRL)", self.pack_price_brl_var, 1, 1)
+        self._make_input(pack_card, "Price (Red Suspendium)", self.pack_price_red_suspendium_var, 1, 2)
         tk.Label(
             pack_card,
-            text="Packs can only use items from the global item base manager.",
+            text="Red Suspendium prices use 1 BRL = 24.4 Red Suspendium. When both prices are filled, Red Suspendium is used for value efficiency.",
             bg=SURFACE_MUTED,
             fg=TEXT_MUTED,
             font=self.body_font,
             justify="left",
-        ).grid(row=2, column=0, columnspan=2, sticky="w", padx=10, pady=(6, 0))
+        ).grid(row=2, column=0, columnspan=3, sticky="w", padx=10, pady=(6, 0))
 
         metrics = tk.Frame(pack_card, bg=SURFACE_MUTED)
-        metrics.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=(14, 0))
-        for column in range(3):
+        metrics.grid(row=3, column=0, columnspan=3, sticky="ew", padx=10, pady=(14, 0))
+        for column in range(4):
             metrics.columnconfigure(column, weight=1)
         self._create_metric_tile(metrics, "Total Value", self.pack_total_value_var, 0)
-        self._create_metric_tile(metrics, "Price in USD", self.pack_price_usd_var, 1)
-        self._create_metric_tile(metrics, "Value / USD", self.pack_value_ratio_var, 2)
+        self._create_metric_tile(metrics, "Effective BRL", self.pack_price_brl_equivalent_var, 1)
+        self._create_metric_tile(metrics, "Price in USD", self.pack_price_usd_var, 2)
+        self._create_metric_tile(metrics, "Value / USD", self.pack_value_ratio_var, 3)
 
         actions = tk.Frame(pack_card, bg=SURFACE_MUTED)
-        actions.grid(row=4, column=0, columnspan=2, sticky="e", padx=10, pady=(14, 0))
+        actions.grid(row=4, column=0, columnspan=3, sticky="e", padx=10, pady=(14, 0))
         if self.selected_pack_index is None:
             self._make_button(actions, "Create", self.create_pack, filled=True).pack(anchor="e")
         else:
@@ -379,7 +382,7 @@ class PacksPanelMixin:
 
     def _create_metric_tile(self, parent: tk.Misc, title: str, variable: tk.StringVar, column: int) -> None:
         tile = tk.Frame(parent, bg=SURFACE, highlightthickness=1, highlightbackground=BORDER, bd=0, padx=12, pady=10)
-        tile.grid(row=0, column=column, sticky="ew", padx=(0, 8) if column < 2 else (0, 0))
+        tile.grid(row=0, column=column, sticky="ew", padx=(0, 8) if column < 3 else (0, 0))
         tk.Label(tile, text=title, bg=SURFACE, fg=TEXT_MUTED, font=self.label_font).pack(anchor="w")
         tk.Label(tile, textvariable=variable, bg=SURFACE, fg=PRIMARY_DARK, font=self.section_font).pack(anchor="w", pady=(6, 0))
 
@@ -501,7 +504,10 @@ class PacksPanelMixin:
     def get_pack_sort_key(self, pack: dict[str, object]) -> tuple[float, float, str]:
         items = self.clone_pack_items(pack.get("items", []))
         total_value = self.calculate_pack_total_value(items)
-        price_usd = self.calculate_pack_price_usd(str(pack.get("price_brl", "") or "").strip())
+        price_usd = self.calculate_pack_price_usd(
+            str(pack.get("price_brl", "") or "").strip(),
+            str(pack.get("price_red_suspendium", "") or "").strip(),
+        )
         ratio = total_value / price_usd if price_usd > 0 else 0.0
         return (-ratio, -total_value, normalize_item_name(str(pack.get("pack_name", "") or "")))
 
@@ -513,7 +519,7 @@ class PacksPanelMixin:
             empty = tk.Frame(self.packs_list_container, bg=SURFACE, pady=48)
             empty.pack(fill="x")
             tk.Label(empty, text="No packs yet", bg=SURFACE, fg=TEXT, font=self.section_font).pack()
-            tk.Label(empty, text="Create a pack to calculate total value versus the converted USD price.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(pady=(6, 0))
+            tk.Label(empty, text="Create a pack to calculate total value versus the converted money or Red Suspendium price.", bg=SURFACE, fg=TEXT_MUTED, font=self.body_font).pack(pady=(6, 0))
             self.selected_pack_index = None
             self._bind_mousewheel_deep(self.packs_list_canvas, self.packs_list_container)
             return
@@ -540,14 +546,17 @@ class PacksPanelMixin:
         total_units = sum(parse_int(item.get("amount", "")) for item in items)
         total_value = self.calculate_pack_total_value(items)
         price_brl = str(pack.get("price_brl", "") or "").strip()
-        price_usd = self.calculate_pack_price_usd(price_brl)
+        price_red_suspendium = str(pack.get("price_red_suspendium", "") or "").strip()
+        price_usd = self.calculate_pack_price_usd(price_brl, price_red_suspendium)
+        effective_brl = self.calculate_effective_pack_price_brl(price_brl, price_red_suspendium)
         ratio = total_value / price_usd if price_usd > 0 else 0.0
+        price_label = f"{format_decimal(parse_float(price_red_suspendium))} Red Suspendium" if parse_float(price_red_suspendium) > 0 else f"BRL {price_brl or '0'}"
 
         title = tk.Label(card, text=pack_name, bg=bg, fg=TEXT, font=self.card_title_font, anchor="w")
         title.grid(row=0, column=0, sticky="w")
         subtitle = tk.Label(card, text=f"{len(items)} line item(s) and calculated value of {format_decimal(ratio, 0)}", bg=bg, fg=PRIMARY_DARK, font=self.label_font, anchor="w")
         subtitle.grid(row=1, column=0, sticky="w", pady=(4, 0))
-        summary = tk.Label(card, text=f"Suspendium Value: {format_decimal(total_value)}   Price: BRL {price_brl or '0'}   Value: {format_decimal(ratio, 0)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
+        summary = tk.Label(card, text=f"Suspendium Value: {format_decimal(total_value)}   Price: {price_label}   Effective: BRL {format_decimal(effective_brl)}   Value: {format_decimal(ratio, 0)}", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
         summary.grid(row=2, column=0, sticky="ew", pady=(6, 0))
         preview_names = [str(item.get("item_name", "") or "").strip() for item in items[:4]]
         preview = tk.Label(card, text=", ".join(name for name in preview_names if name) or "No items", bg=bg, fg=TEXT_MUTED, font=self.card_meta_font, anchor="w", justify="left", wraplength=640)
@@ -572,6 +581,7 @@ class PacksPanelMixin:
         pack = self.packs[index]
         self.pack_name_var.set(str(pack.get("pack_name", "") or ""))
         self.pack_price_brl_var.set(str(pack.get("price_brl", "") or ""))
+        self.pack_price_red_suspendium_var.set(str(pack.get("price_red_suspendium", "") or ""))
         self.pack_editor_items = self.clone_pack_items(pack.get("items", []))
         self.pack_title_var.set(str(pack.get("pack_name", "") or "Unnamed Pack"))
         self.update_pack_metrics()
@@ -584,6 +594,7 @@ class PacksPanelMixin:
         self.selected_pack_index = None
         self.pack_name_var.set("")
         self.pack_price_brl_var.set("")
+        self.pack_price_red_suspendium_var.set("")
         self.pack_editor_items = []
         self.pack_title_var.set("New Pack")
         self.update_pack_metrics()
@@ -598,6 +609,7 @@ class PacksPanelMixin:
         return {
             "pack_name": self.pack_name_var.get().strip(),
             "price_brl": self.pack_price_brl_var.get().strip(),
+            "price_red_suspendium": self.pack_price_red_suspendium_var.get().strip(),
             "items": self.clone_pack_items(self.pack_editor_items),
         }
 
@@ -612,7 +624,7 @@ class PacksPanelMixin:
         return cloned
 
     def clone_packs_state(self) -> list[dict[str, object]]:
-        return [{"pack_name": str(entry.get("pack_name", "") or "").strip(), "price_brl": str(entry.get("price_brl", "") or "").strip(), "items": self.clone_pack_items(entry.get("items", []))} for entry in self.packs]
+        return [{"pack_name": str(entry.get("pack_name", "") or "").strip(), "price_brl": str(entry.get("price_brl", "") or "").strip(), "price_red_suspendium": str(entry.get("price_red_suspendium", "") or "").strip(), "items": self.clone_pack_items(entry.get("items", []))} for entry in self.packs]
 
     def clone_item_bases_state(self) -> list[dict[str, str]]:
         return [{"item_name": str(entry.get("item_name", "") or "").strip(), "item_priority": str(entry.get("item_priority", "") or "").strip(), "item_base_value": str(entry.get("item_base_value", "") or "").strip(), "item_value": str(entry.get("item_value", "") or "").strip()} for entry in self.item_bases]
@@ -621,13 +633,15 @@ class PacksPanelMixin:
         pack = self.collect_pack_data()
         pack_name = str(pack.get("pack_name", "") or "").strip()
         price_brl = str(pack.get("price_brl", "") or "").strip()
+        price_red_suspendium = str(pack.get("price_red_suspendium", "") or "").strip()
         items = self.clone_pack_items(pack.get("items", []))
         if not pack_name:
             raise ValueError("Pack name is required.")
 
         price_brl_value = parse_float(price_brl)
-        if price_brl_value <= 0:
-            raise ValueError("Price in BRL must be greater than zero.")
+        price_red_suspendium_value = parse_float(price_red_suspendium)
+        if price_brl_value <= 0 and price_red_suspendium_value <= 0:
+            raise ValueError("Enter a BRL price or a Red Suspendium price greater than zero.")
         if not items:
             raise ValueError("Add at least one item to the pack.")
 
@@ -661,7 +675,12 @@ class PacksPanelMixin:
             if normalize_item_name(existing_name) == target_key:
                 raise ValueError("A pack with that name already exists.")
 
-        return {"pack_name": pack_name, "price_brl": format_decimal(price_brl_value), "items": normalized_items}
+        return {
+            "pack_name": pack_name,
+            "price_brl": format_decimal(price_brl_value) if price_brl_value > 0 else "",
+            "price_red_suspendium": format_decimal(price_red_suspendium_value) if price_red_suspendium_value > 0 else "",
+            "items": normalized_items,
+        }
 
     def create_pack(self) -> None:
         previous_packs = self.clone_packs_state()
@@ -1165,15 +1184,30 @@ class PacksPanelMixin:
             total += self.calculate_item_base_value(item_base) * parse_int(item.get("amount", ""))
         return total
 
-    def calculate_pack_price_usd(self, price_brl: str) -> float:
-        price_brl_value = parse_float(price_brl)
+    def calculate_effective_pack_price_brl(self, price_brl: str, price_red_suspendium: str = "") -> float:
+        red_suspendium_value = parse_float(price_red_suspendium)
+        if red_suspendium_value > 0 and RED_SUSPENDIUM_PER_BRL > 0:
+            return red_suspendium_value / RED_SUSPENDIUM_PER_BRL
+        return parse_float(price_brl)
+
+    def calculate_pack_price_usd(self, price_brl: str, price_red_suspendium: str = "") -> float:
+        price_brl_value = self.calculate_effective_pack_price_brl(price_brl, price_red_suspendium)
         return price_brl_value / BRL_TO_USD_RATE if BRL_TO_USD_RATE > 0 else 0.0
+
+    def calculate_pack_price_red_suspendium(self, price_brl: str, price_red_suspendium: str = "") -> float:
+        red_suspendium_value = parse_float(price_red_suspendium)
+        if red_suspendium_value > 0:
+            return red_suspendium_value
+        price_brl_value = parse_float(price_brl)
+        return price_brl_value * RED_SUSPENDIUM_PER_BRL
 
     def update_pack_metrics(self) -> None:
         total_value = self.calculate_pack_total_value(self.pack_editor_items)
-        price_usd = self.calculate_pack_price_usd(self.pack_price_brl_var.get())
+        price_usd = self.calculate_pack_price_usd(self.pack_price_brl_var.get(), self.pack_price_red_suspendium_var.get())
+        effective_brl = self.calculate_effective_pack_price_brl(self.pack_price_brl_var.get(), self.pack_price_red_suspendium_var.get())
         ratio = total_value / price_usd if price_usd > 0 else 0.0
         self.pack_total_value_var.set(format_decimal(total_value))
+        self.pack_price_brl_equivalent_var.set(f"BRL {format_decimal(effective_brl)}")
         self.pack_price_usd_var.set(f"US$ {format_decimal(price_usd)}")
         self.pack_value_ratio_var.set(format_decimal(ratio, 4))
 

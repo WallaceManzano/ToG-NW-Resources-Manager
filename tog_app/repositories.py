@@ -221,6 +221,7 @@ class PackRepository:
                     {
                         "pack_name": str(entry.get("pack_name", "") or "").strip(),
                         "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                        "price_red_suspendium": str(entry.get("price_red_suspendium", "") or "").strip(),
                         "items": items,
                     }
                 )
@@ -252,6 +253,7 @@ class PackRepository:
                 {
                     "pack_name": str(entry.get("pack_name", "") or "").strip(),
                     "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                    "price_red_suspendium": str(entry.get("price_red_suspendium", "") or "").strip(),
                     "items": [
                         {
                             "item_name": str(item.get("item_name", "") or "").strip(),

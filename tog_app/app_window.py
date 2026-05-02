@@ -63,7 +63,9 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.team_note_var = tk.StringVar()
         self.pack_name_var = tk.StringVar()
         self.pack_price_brl_var = tk.StringVar()
+        self.pack_price_red_suspendium_var = tk.StringVar()
         self.pack_price_usd_var = tk.StringVar(value="US$ 0")
+        self.pack_price_brl_equivalent_var = tk.StringVar(value="BRL 0")
         self.pack_total_value_var = tk.StringVar(value="0")
         self.pack_value_ratio_var = tk.StringVar(value="0")
         self.item_base_name_var = tk.StringVar()
@@ -143,6 +145,7 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         self.item_base_priority_var.trace_add("write", self._on_item_base_inputs_changed)
         self.item_base_value_var.trace_add("write", self._on_item_base_inputs_changed)
         self.pack_price_brl_var.trace_add("write", self._on_pack_price_changed)
+        self.pack_price_red_suspendium_var.trace_add("write", self._on_pack_price_changed)
         self.item_catalog_search_var.trace_add("write", self._on_item_catalog_search_changed)
 
         self._setup_fonts()
@@ -513,7 +516,6 @@ class TogCharacterManager(CharactersPanelMixin, FormationsPanelMixin, GachaPanel
         if image is not None:
             self.level_star_images[star_key] = image
         return image
-
 
 
 

@@ -90,7 +90,8 @@ It currently combines six tools in a single UI:
 - Use lootbox-backed item-base entries inside normal packs just like any other catalog item
 - Calculate pack metrics live:
   - total pack value
-  - price converted from BRL to USD
+  - price converted from BRL or Red Suspendium to USD
+  - effective BRL value for Red Suspendium prices using 1 BRL = 24.4 Red Suspendium
   - value per USD
 - Sort pack cards by their computed value efficiency
 - Prevent deleting an item-base entry while it is still used by any pack
@@ -215,9 +216,9 @@ py -m pip install Pillow
 
 1. Open `Packs Value`.
 2. Use `Manage Item Base` to create shared catalog items if needed.
-3. Create a new pack and enter the BRL price.
+3. Create a new pack and enter the BRL price or the Red Suspendium price.
 4. Add items from the catalog and adjust their amounts.
-5. Review total value, USD conversion, and value-per-USD before saving.
+5. Review total value, effective BRL, USD conversion, and value-per-USD before saving.
 
 ### Create or Edit a Lootbox
 

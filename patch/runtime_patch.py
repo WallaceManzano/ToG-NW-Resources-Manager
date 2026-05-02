@@ -680,6 +680,7 @@ def apply_runtime_patches() -> None:
                     {
                         "pack_name": str(entry.get("pack_name", "") or "").strip(),
                         "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                        "price_red_suspendium": str(entry.get("price_red_suspendium", "") or "").strip(),
                         "items": items,
                     }
                 )
@@ -715,6 +716,7 @@ def apply_runtime_patches() -> None:
                 {
                     "pack_name": str(entry.get("pack_name", "") or "").strip(),
                     "price_brl": str(entry.get("price_brl", "") or "").strip(),
+                    "price_red_suspendium": str(entry.get("price_red_suspendium", "") or "").strip(),
                     "items": [
                         {
                             "item_name": str(item.get("item_name", "") or "").strip(),
@@ -1694,6 +1696,7 @@ def apply_runtime_patches() -> None:
 
         sort_wrap = tk.Frame(packs_header, bg=SURFACE)
         sort_wrap.grid(row=0, column=1, sticky="e", padx=(0, 12))
+        sort_wrap.columnconfigure(1, weight=1)
         self.packs_sort_wrap = sort_wrap
         tk.Label(
             sort_wrap,
@@ -1701,7 +1704,7 @@ def apply_runtime_patches() -> None:
             bg=SURFACE,
             fg=TEXT_MUTED,
             font=self.label_font,
-        ).pack(anchor="e")
+        ).grid(row=0, column=0, sticky="e", padx=(0, 8))
         sort_picker = ttk.Combobox(
             sort_wrap,
             textvariable=self.pack_sort_mode_var,
@@ -1709,7 +1712,7 @@ def apply_runtime_patches() -> None:
             state="readonly",
             width=18,
         )
-        sort_picker.pack(anchor="e", pady=(6, 0), ipady=4)
+        sort_picker.grid(row=0, column=1, sticky="e", ipady=4)
         sort_picker.bind("<<ComboboxSelected>>", self.on_pack_sort_changed)
         self.packs_sort_picker = sort_picker
 
@@ -1720,7 +1723,10 @@ def apply_runtime_patches() -> None:
         pack_name = normalize_item_name(str(pack.get("pack_name", "") or ""))
         items = self.clone_pack_items(pack.get("items", []))
         total_value = self.calculate_pack_total_value(items)
-        price_usd = self.calculate_pack_price_usd(str(pack.get("price_brl", "") or "").strip())
+        price_usd = self.calculate_pack_price_usd(
+            str(pack.get("price_brl", "") or "").strip(),
+            str(pack.get("price_red_suspendium", "") or "").strip(),
+        )
         ratio = total_value / price_usd if price_usd > 0 else 0.0
         sort_mode = self.pack_sort_mode_var.get().strip() if hasattr(self, "pack_sort_mode_var") else PACK_SORT_OPTIONS[0]
         if sort_mode == PACK_SORT_OPTIONS[1]:

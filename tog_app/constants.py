@@ -151,6 +151,7 @@ SORT_OPTIONS = ("Sort by LB", "Sort by Rarity", "Sort by Color")
 FORMATION_SLOT_ORDER = ("front_1", "front_2", "front_3", "back_1", "back_2")
 TEAM_OPTIONS = tuple(f"Team {index}" for index in range(1, 6))
 BRL_TO_USD_RATE = 6.25
+RED_SUSPENDIUM_PER_BRL = 24.4
 TASK_TYPE_OPTIONS = ("Goal",)
 TASK_FILTER_ALL = "All Goals"
 TASK_FILTER_OPTIONS = (TASK_FILTER_ALL,)
